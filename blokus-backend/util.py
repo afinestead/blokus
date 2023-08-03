@@ -1,55 +1,8 @@
-from copy import copy, deepcopy
-
-from typing import List, Set, Tuple
+from typing import Set
 
 import matplotlib.pyplot as plt
-import numpy as np
 
-
-class Piece:
-    def __init__(self, squares: Set[Tuple] = set()):
-        sqs = set()
-        for sq in squares:
-            sqs.add(sq) 
-        self.squares: Set[Tuple] = set(sorted(sqs))
-    
-    def __eq__(self, other):
-        return self.squares == other.squares
-    
-    def __hash__(self):
-        return hash(tuple(self.squares))
-    
-    def __copy__(self):
-        return Piece(self.squares.copy())
-    
-    def __add__(self, square: Tuple):
-        sqs = self.squares.copy()
-        sqs.add(square)
-        return Piece(sqs)
-    
-    def __iter__(self):
-        return self.squares.__iter__()
-    
-    def __str__(self):
-        return str(self.squares)
-    
-    def rotate(self, deg):
-        as_rad = np.deg2rad(deg)
-        cos = int(np.cos(as_rad))
-        sin = int(np.sin(as_rad))
-        def rot(pt):
-            return (pt[0]*cos - pt[1]*sin, pt[1]*cos + pt[0]*sin)
-        return Piece(rot(block) for block in self)
-
-    def reflect(self, x_ax=True):
-        def ref(pt):
-            return (pt[0], -pt[1]) if x_ax else (-pt[0], pt[1])
-        return Piece(ref(block) for block in self)
-    
-    def translate(self):
-        min_x = min(block[0] for block in self)
-        min_y = min(block[1] for block in self)
-        return Piece((x - min_x, y - min_y) for x,y in self)
+from piece import Piece
 
 def is_unique(piece: Piece, unique: Set[Piece]):
     for rot in (0, 90, 180, 270):
@@ -76,7 +29,7 @@ def _generate(pieces: Set[Piece]) -> Set[Piece]:
                     new_pieces.add(new_piece)
     return new_pieces
 
-def generate_pieces(degree):
+def generate_pieces(degree) -> Set[Piece]:
     pieces: Set[Piece] = {Piece({(0,0)})}
     new_pieces = None
     for deg in range(1,degree):
@@ -86,7 +39,7 @@ def generate_pieces(degree):
         print(f"{len(new_pieces)} blocks generated, {len(pieces)} blocks total")
     return pieces
 
-def print_piece(piece):
+def show_piece(piece):
     fig = plt.figure()
     plt.xlim(0, degree)
     plt.ylim(0, degree)
@@ -100,7 +53,7 @@ if __name__ == "__main__":
     # print(pieces)
     # print(len(pieces))
     # for piece in pieces:
-    #     print_piece(piece)
+    #     show_piece(piece)
 
     # p1 = Piece({(0,0), (0,1), (1,0)})
     # p2 = Piece({(0,0), (1,0), (0,1)})
@@ -123,24 +76,14 @@ if __name__ == "__main__":
     degree = 12
     pieces = generate_pieces(degree)
     print(len(pieces))
+
+    total_blocks = 0
+    for piece in pieces:
+        total_blocks += len(piece)
+    print(total_blocks)
+
     for piece in pieces:
         print(piece)
-        print_piece(piece)
+        show_piece(piece)
 
-    # num_pieces = len(pieces)
-
-    # rows = int(np.floor(np.sqrt(num_pieces)))
-    # cols = int(np.ceil(num_pieces/rows))
-    # fig, axs = plt.subplots(rows, cols)
-    
-    
-    # for i, piece in enumerate(pieces):
-    #     r = i // cols
-    #     c = i // rows
-    #     print(r,c)
-    #     ax = axs[r,c]
-    #     print_piece(ax, piece)
-    # plt.show()
-        # print(piece)
-        # print_piece(piece)
     
