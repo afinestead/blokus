@@ -1,5 +1,9 @@
 <template>
+  <!-- TODO:
+  If a piece is rotated/flipped while hovering, the highlighting doesn't update
+  -->
   <div
+    ref="boardRef"
     class="board"
     :style="{
       width: `${(boardSize*$squareSize)}px`,
@@ -24,15 +28,14 @@
       :key="idx"
       :color="color"
       :blocks="p"
-      :style="{width: `${pieceLen(p)[0]*$squareSize}px`, height: `${pieceLen(p)[1]*$squareSize}px`}"
-      @mousedown.right="flipPiece(p, idx)"
-      @contextmenu.prevent
       @click.stop="handlePieceClick($event, p, idx)"
+      @contextmenu.prevent
     />
   </div>
 
   <piece
     class="selected-piece"
+    ref="selectedPieceRef"
     :color="color"
     :blocks="selectedPiece === null ? [] : selectedPiece.block"
     :style="{
@@ -40,9 +43,8 @@
       top: `${cursorY - offsetY}px`,
       left: `${cursorX - offsetX}px`,
     }"
-    @mousedown.right="flipPiece(selectedPiece.block, selectedPiece.index)"
-    @contextmenu.prevent
     @click.stop="handlePieceClick($event, selectedPiece.block, selectedPiece.index)"
+    @contextmenu.prevent
   />
 
 </template>
@@ -61,9 +63,6 @@ export default {
       myPieces: [],
       color: "green",
       boardSize: 0,
-      clicks: 0,
-      clickTimer: null,
-      dblClickDelay: 200,
       maxPieceLen: 0,
       selectedPiece: null,
       cursorX: null,
@@ -78,13 +77,39 @@ export default {
     this.maxPieceLen = Math.max(...this.myPieces.map(p => p.length));
     this.boardSize = 20;
 
+    // const squares = this.$refs.board.children;
+    // console.log(squares);
+    console.log(this.$refs.boardRef.getBoundingClientRect());
+
     document.onmousemove = (event) => {
       this.cursorX = event.pageX;
       this.cursorY = event.pageY;
+
+      if (this.selectedPiece) {
+        // find square where cursor is hovering
+        const boardSqs = this.$refs.boardRef.children;
+        const overlap = this.computePieceOverlap();
+        this.clearHighlight();
+        if (overlap) {
+          overlap.forEach(overlapIdx => {
+            boardSqs[overlapIdx].classList.add("highlighted");
+          });
+        }
+      
+        
+        // check all square have >50% overlap
+        //  find bsq center
+        //  overlapped if bsq in piece
+        // for (const square of squares) {
+        //   console.log(square);
+        // }
+        // for(const piece of this.selectedPiece.elem.children) {
+
+        // }
+      }
     };
 
     document.onkeydown = (event) => {
-      console.log(event);
       if (event.key === "Escape") {
         if (this.selectedPiece) {
           this.dropPiece();
@@ -93,41 +118,13 @@ export default {
     };
   },
   methods: {
-    deg2rad(deg) {
-      return deg * Math.PI / 180;
-    },
-    translatePiece(piece) {
-      let minX = Infinity;
-      let minY = Infinity;
-      for (const [x, y] of piece) {
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-      }
-      return piece.map(([x,y]) => [x-minX,y-minY]);
-    },
-    rotatePiece(piece, idx, deg) {
-      const rad = this.deg2rad(deg);
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
-      let p = piece.map(([x,y]) => [Math.round(x*cos - y*sin), Math.round(x*sin + y*cos)]);
-      this.myPieces[idx] = this.translatePiece(p);
-    },
-    flipPiece(piece, idx) {
-      let p = piece.map(([x,y]) => [-x,y]);
-      this.myPieces[idx] = this.translatePiece(p);
-    },
-    pieceLen(piece) {
-      let maxX = -Infinity;
-      let maxY = -Infinity;
-      for (const [x, y] of piece) {
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-      }
-      return [maxX + 1, maxY + 1];
-    },
     pickupPiece(evt, piece, idx) {
       // this.myPieces.splice(idx, 1);
       const block = evt.target.parentElement;
+      if (!block.classList.contains("piece")) {
+        return;
+      }
+
       this.offsetX = evt.clientX - block.getBoundingClientRect().left;
       this.offsetY = evt.clientY - block.getBoundingClientRect().top;
       // console.log(offsetX, offsetY);
@@ -139,31 +136,71 @@ export default {
       block.classList.add("hidden");
     },
     dropPiece() {
-      console.log("dropping");
       if (this.selectedPiece !== null) {
         this.selectedPiece.elem.classList.remove("hidden")
         this.selectedPiece = null;
       }
     },
     placePiece() {
-      console.log("placing");
+      const overlap = this.computePieceOverlap();
+      const boardSqs = this.$refs.boardRef.children;
+      overlap.forEach(overlapIdx => {
+        const sq = boardSqs[overlapIdx];
+        sq.style.backgroundColor = "green";
+        sq.classList.add("occupied");
+      });
+      
     },
     handlePieceClick(evt, piece, idx) {
-      this.clicks++;
-      if (this.clicks === 1) {
-        this.clickTimer = setTimeout(() => {
-          if (this.selectedPiece === null) {
-            this.pickupPiece(evt, piece, idx);
-          } else {
-            this.placePiece();
-          }
-          this.clicks = 0;
-        }, this.dblClickDelay);
+      if (this.selectedPiece === null) {
+        this.pickupPiece(evt, piece, idx);
       } else {
-        // Double click
-        this.rotatePiece(piece, idx, 90);
-        clearTimeout(this.clickTimer);
-        this.clicks = 0;
+        this.placePiece();
+      }
+    },
+    clearHighlight() {
+      for (const bsq of this.$refs.boardRef.children) {
+        bsq.classList.remove("highlighted");
+      }
+    },
+    computePieceOverlap() {
+      const board = this.$refs.boardRef;
+      const boardRect = board.getBoundingClientRect();
+      const boardSqs = board.children;
+
+      const pieces = this.$refs.selectedPieceRef.$el.children;
+      let pieceCenters = [];
+      for (const psq of pieces) {
+        const pRect = psq.getBoundingClientRect();
+        pieceCenters.push([pRect.left + (this.$squareSize / 2), pRect.top + (this.$squareSize / 2)]);
+      }
+      let intersection = []
+      pieceCenters.forEach(psq => {
+        const sqOffsetX = Math.floor((psq[0] - boardRect.left) / this.$squareSize);
+        const sqOffsetY = Math.floor((psq[1] - boardRect.top) / this.$squareSize);
+        if (
+          sqOffsetX >= 0 && sqOffsetX < this.boardSize &&
+          sqOffsetY >= 0 && sqOffsetY < this.boardSize
+        ) {
+          const asIdx = sqOffsetX + (sqOffsetY * this.boardSize);
+          if (!boardSqs[asIdx].classList.contains("occupied")) {
+            intersection.push(asIdx);
+          }
+        }
+      });
+      
+      if (intersection.length === pieceCenters.length) {
+        return intersection;
+      }
+      return [];
+      // console.log(piece.children);
+    },
+  },
+  watch: {
+    selectedPiece(newPiece) {
+      console.log(newPiece);
+      if (newPiece === null) {
+        this.clearHighlight()
       }
     }
   }
@@ -190,7 +227,7 @@ export default {
   width: 20px;
 }
 
-.board-square:hover {
+.highlighted {
   border-color: yellow;
 }
 
