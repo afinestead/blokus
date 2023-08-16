@@ -26,8 +26,9 @@
       class="unplaced-piece"
       v-for="(p,idx) in myPieces"
       :key="idx"
-      :color="color"
+      :color="playerProfile.color"
       :blocks="p"
+      :square-size="8"
       @click.stop="handlePieceClick($event, p, idx)"
       @contextmenu.prevent
     />
@@ -36,15 +37,17 @@
   <piece
     class="selected-piece"
     ref="selectedPieceRef"
-    :color="color"
+    :color="playerProfile.color"
     :blocks="selectedPiece === null ? [] : selectedPiece.block"
+    :square-size="$squareSize"
     :style="{
       display: selectedPiece === null ? 'none' : 'block',
-      top: `${cursorY - offsetY}px`,
-      left: `${cursorX - offsetX}px`,
+      top: `${cursorY + offsetY - 8 - ($squareSize / 2)}px`,
+      left: `${cursorX + offsetX - 8 - ($squareSize / 2)}px`,
     }"
     @click.stop="handlePieceClick($event, selectedPiece.block, selectedPiece.index)"
     @contextmenu.prevent
+    @change="$nextTick(() => snapPieceToCursor())"
   />
 
 </template>
@@ -61,7 +64,7 @@ export default {
   data() {
     return {
       myPieces: [],
-      color: "green",
+      playerProfile: {},
       boardSize: 0,
       maxPieceLen: 0,
       selectedPiece: null,
@@ -76,10 +79,11 @@ export default {
     this.myPieces = [[[0, 1], [1, 0], [1, 1], [0, 0]], [[0, 1], [2, 1], [1, 1], [2, 0], [0, 2]], [[4, 0], [0, 0], [2, 0], [3, 0], [1, 0]], [[0, 1], [1, 2], [2, 1], [1, 1], [1, 0]], [[0, 1], [1, 0], [1, 1]], [[0, 1], [2, 1], [1, 1], [2, 0], [3, 0]], [[0, 1], [2, 1], [3, 1], [1, 1], [3, 0]], [[0, 1], [1, 2], [2, 1], [1, 1], [2, 0]], [[1, 0], [2, 0], [3, 0], [0, 0]], [[1, 0], [2, 0], [0, 0]], [[0, 1], [2, 1], [1, 1], [2, 0], [1, 0]], [[0, 1], [1, 1], [2, 0], [0, 2], [1, 0]], [[0, 1], [2, 1], [0, 0], [1, 1], [2, 0]], [[0, 1], [1, 1], [2, 0], [2, 1]], [[1, 2], [2, 1], [2, 0], [0, 2], [2, 2]], [[0, 1], [1, 0], [1, 1], [2, 1]], [[0, 0]], [[1, 0], [0, 0]], [[0, 1], [2, 1], [1, 1], [2, 0], [2, 2]], [[0, 1], [1, 0], [0, 2], [1, 1]], [[0, 1], [2, 1], [3, 1], [1, 1], [2, 0]]];
     this.maxPieceLen = Math.max(...this.myPieces.map(p => p.length));
     this.boardSize = 20;
-
-    // const squares = this.$refs.board.children;
-    // console.log(squares);
-    console.log(this.$refs.boardRef.getBoundingClientRect());
+    this.playerProfile = {
+      id: 0,
+      color: "#ff00ff",
+      name: "Player 1"
+    };
 
     document.onmousemove = (event) => {
       this.cursorX = event.pageX;
@@ -95,17 +99,6 @@ export default {
             boardSqs[overlapIdx].classList.add("highlighted");
           });
         }
-      
-        
-        // check all square have >50% overlap
-        //  find bsq center
-        //  overlapped if bsq in piece
-        // for (const square of squares) {
-        //   console.log(square);
-        // }
-        // for(const piece of this.selectedPiece.elem.children) {
-
-        // }
       }
     };
 
@@ -118,6 +111,43 @@ export default {
     };
   },
   methods: {
+    snapPieceToCursor() {
+      // debugger; // eslint-disable-line
+      // Find left most block
+      let x = Infinity;
+      let y = Infinity;
+      let origin = null;
+      const blocks = this.$refs.selectedPieceRef.$el.children;
+      let leftmost = []
+      for (const block of blocks) {
+        block.style.backgroundColor = this.playerProfile.color;
+        const rect = block.getBoundingClientRect();
+        console.log(rect);
+        if (rect.left <= x) {
+          leftmost.push(block)
+          x = rect.left;
+        }
+      }
+      console.log("most left:");
+
+      for (const block of leftmost) {
+        const rect = block.getBoundingClientRect();
+        console.log((rect));
+        if (rect.top <= y) {
+          origin = block;
+          y = rect.top;
+        }
+      }
+      const rect = this.$refs.selectedPieceRef.$el.getBoundingClientRect();
+
+      origin.style.backgroundColor = "green";
+      console.log("leftmost:");
+      console.log(origin.getBoundingClientRect());
+
+      this.offsetX = rect.left - x;
+      this.offsetY = rect.top - y;
+      console.log(this.cursorX, this.offsetX, this.cursorY, this.offsetY);
+    },
     pickupPiece(evt, piece, idx) {
       // this.myPieces.splice(idx, 1);
       const block = evt.target.parentElement;
@@ -125,15 +155,16 @@ export default {
         return;
       }
 
-      this.offsetX = evt.clientX - block.getBoundingClientRect().left;
-      this.offsetY = evt.clientY - block.getBoundingClientRect().top;
-      // console.log(offsetX, offsetY);
+
+
       this.selectedPiece = {
         block: piece,
         index: idx,
         elem: block,
       };
       block.classList.add("hidden");
+      
+      this.$nextTick(() => this.snapPieceToCursor());
     },
     dropPiece() {
       if (this.selectedPiece !== null) {
@@ -142,20 +173,25 @@ export default {
       }
     },
     placePiece() {
-      const overlap = this.computePieceOverlap();
-      const boardSqs = this.$refs.boardRef.children;
-      overlap.forEach(overlapIdx => {
-        const sq = boardSqs[overlapIdx];
-        sq.style.backgroundColor = "green";
-        sq.classList.add("occupied");
-      });
-      
+      if (this.isMyTurn()) {
+        const overlap = this.computePieceOverlap();
+        if (this.isPlacementValid(overlap)) {
+          const boardSqs = this.$refs.boardRef.children;
+          overlap.forEach(overlapIdx => {
+            const sq = boardSqs[overlapIdx];
+            sq.style.backgroundColor = this.playerProfile.color;
+            sq.classList.add("occupied");
+          });
+          this.issueBoardUpdate();
+        }
+        
+      }
     },
     handlePieceClick(evt, piece, idx) {
       if (this.selectedPiece === null) {
         this.pickupPiece(evt, piece, idx);
       } else {
-        this.placePiece();
+          this.placePiece();
       }
     },
     clearHighlight() {
@@ -195,10 +231,21 @@ export default {
       return [];
       // console.log(piece.children);
     },
+    isMyTurn() {
+      // TODO
+      return true;
+    },
+    isPlacementValid(placement) {
+      // TODO
+      return placement !== null;
+    },
+    issueBoardUpdate() {
+      // TODO
+      return;
+    },
   },
   watch: {
     selectedPiece(newPiece) {
-      console.log(newPiece);
       if (newPiece === null) {
         this.clearHighlight()
       }
@@ -216,13 +263,13 @@ export default {
   display: block;
   position: relative;
   float: left;
-  border: 1px double black;
 }
 
 .board-square {
   position: absolute;
   box-sizing: border-box;
   border: 1px solid black;
+  margin: 1px;
   height: 20px;
   width: 20px;
 }
@@ -243,7 +290,6 @@ export default {
 .unplaced-piece {
   margin: 1em;
   display: inline-block;
-  width: 100%;
 }
 
 .selected-piece {
@@ -255,10 +301,4 @@ export default {
   visibility: hidden;
   opacity: 0;
 }
-
-/* .board-line {
-  height: 20px;
-  width: 400px;
-  border-top: 2px solid;
-} */
 </style>

@@ -1,17 +1,17 @@
 <template>
-  <div
-    class="piece"
-    :style="{width: `${pieceLen[0]*$squareSize}px`, height: `${pieceLen[1]*$squareSize}px`}"
-  >
+  <div class="piece" :style="pieceStyle">
     <div
       v-for="(block, idx) in blocksInternal"
       :key="idx"
       class="block"
-      :style="{
-        backgroundColor: color,
-        left: `${block[0]*$squareSize}px`,
-        top: `${block[1]*$squareSize}px`
-      }"
+      :style="[
+        blockStyle,
+        {
+          backgroundColor: color,
+          left: `${block[0]*squareSize}px`,
+          top: `${block[1]*squareSize}px`
+        }
+      ]"
       @click.stop="handlePieceClick"
       @mousedown.right="flipPiece"
       @contextmenu.prevent
@@ -23,6 +23,9 @@
 export default {
   name: 'Piece',
   props: {
+    squareSize: {
+      type: Number,
+    },
     blocks: {
       type: Array,
       default: () => [],
@@ -39,6 +42,9 @@ export default {
       clickTimer: null,
       dblClickDelay: 200,
       pieceLen: 0,
+      ss: 20,
+      pieceStyle: {},
+      blockStyle: {},
     }
   },
   mounted: function() {
@@ -52,6 +58,15 @@ export default {
     }
     
     this.pieceLen = [maxX + 1, maxY + 1];
+
+    this.pieceStyle = {
+      height: `${this.pieceLen[1]*this.squareSize}px`,
+      width: `${this.pieceLen[0]*this.squareSize}px`,
+    }
+    this.blockStyle = {
+      height: `${this.squareSize-1}px`,
+      width: `${this.squareSize-1}px`,
+    }
   },
   watch: {
     blocks(newBlocks) {
@@ -70,6 +85,7 @@ export default {
         // Double click
         this.rotatePiece(90);
         clearTimeout(this.clickTimer);
+        this.$emit("change")
         this.clicks = 0;
       }
     },
@@ -85,6 +101,7 @@ export default {
     flipPiece() {
       const p = this.blocksInternal.map(([x,y]) => [-x,y]);
       this.blocksInternal = this.translatePiece(p);
+      this.$emit("change")
     },
     rotatePiece(deg) {
       const rad = deg * Math.PI / 180;
@@ -92,12 +109,22 @@ export default {
       const sin = Math.sin(rad);
       let p = this.blocksInternal.map(([x,y]) => [Math.round(x*cos - y*sin), Math.round(x*sin + y*cos)]);
       this.blocksInternal = this.translatePiece(p);
+      this.$emit("change")
     },
   },
+  computed: {
+    cssProps() {
+      return {
+        "--square-size": `${this.squareSize}px`,
+        "--piece-width": `${this.pieceLen[0]*this.squareSize}px`,
+        "--piece-height": `${this.pieceLen[1]*this.squareSize}px`,
+      }
+    }
+  }
 }
 </script>
 
-<style>
+<style scoped>
 .piece {
     position: relative;
 }
@@ -105,8 +132,7 @@ export default {
 .block {
     position: absolute;
     border: 1px solid black;
-    height: 20px;
-    width: 20px;
+    margin: 1px;
     box-sizing: border-box;
 }
 </style>
