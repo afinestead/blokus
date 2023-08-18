@@ -28,7 +28,7 @@
       :key="idx"
       :color="playerProfile.color"
       :blocks="p"
-      :square-size="8"
+      :square-size="10"
       @click.stop="handlePieceClick($event, p, idx)"
       @contextmenu.prevent
     />
@@ -105,7 +105,7 @@ export default {
     document.onkeydown = (event) => {
       if (event.key === "Escape") {
         if (this.selectedPiece) {
-          this.dropPiece();
+          this.dropPiece(true);
         }
       }
     };
@@ -116,37 +116,23 @@ export default {
       // Find left most block
       let x = Infinity;
       let y = Infinity;
-      let origin = null;
       const blocks = this.$refs.selectedPieceRef.$el.children;
-      let leftmost = []
       for (const block of blocks) {
-        block.style.backgroundColor = this.playerProfile.color;
         const rect = block.getBoundingClientRect();
-        console.log(rect);
-        if (rect.left <= x) {
-          leftmost.push(block)
+        if (rect.left < x) {
           x = rect.left;
         }
       }
-      console.log("most left:");
 
-      for (const block of leftmost) {
+      for (const block of blocks) {
         const rect = block.getBoundingClientRect();
-        console.log((rect));
-        if (rect.top <= y) {
-          origin = block;
+        if (rect.left === x && rect.top <= y) {
           y = rect.top;
         }
       }
       const rect = this.$refs.selectedPieceRef.$el.getBoundingClientRect();
-
-      origin.style.backgroundColor = "green";
-      console.log("leftmost:");
-      console.log(origin.getBoundingClientRect());
-
       this.offsetX = rect.left - x;
       this.offsetY = rect.top - y;
-      console.log(this.cursorX, this.offsetX, this.cursorY, this.offsetY);
     },
     pickupPiece(evt, piece, idx) {
       // this.myPieces.splice(idx, 1);
@@ -166,9 +152,11 @@ export default {
       
       this.$nextTick(() => this.snapPieceToCursor());
     },
-    dropPiece() {
+    dropPiece(discard) {
       if (this.selectedPiece !== null) {
-        this.selectedPiece.elem.classList.remove("hidden")
+        if (discard) {
+          this.selectedPiece.elem.classList.remove("hidden")
+        }
         this.selectedPiece = null;
       }
     },
@@ -183,6 +171,7 @@ export default {
             sq.classList.add("occupied");
           });
           this.issueBoardUpdate();
+          this.dropPiece(false);
         }
         
       }
