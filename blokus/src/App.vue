@@ -53,7 +53,6 @@
 </template>
 
 <script>
-// import HelloWorld from './components/HelloWorld.vue'
 import Piece from './components/Piece.vue'
 
 export default {
@@ -65,6 +64,7 @@ export default {
     return {
       myPieces: [],
       playerProfile: {},
+      gameProfile: {},
       boardSize: 0,
       maxPieceLen: 0,
       selectedPiece: null,
@@ -75,14 +75,18 @@ export default {
     }
   },
   mounted: function () {
-    // TODO: Fetch from API
+    // TODO: Fetch these from API
     this.myPieces = [[[0, 1], [1, 0], [1, 1], [0, 0]], [[0, 1], [2, 1], [1, 1], [2, 0], [0, 2]], [[4, 0], [0, 0], [2, 0], [3, 0], [1, 0]], [[0, 1], [1, 2], [2, 1], [1, 1], [1, 0]], [[0, 1], [1, 0], [1, 1]], [[0, 1], [2, 1], [1, 1], [2, 0], [3, 0]], [[0, 1], [2, 1], [3, 1], [1, 1], [3, 0]], [[0, 1], [1, 2], [2, 1], [1, 1], [2, 0]], [[1, 0], [2, 0], [3, 0], [0, 0]], [[1, 0], [2, 0], [0, 0]], [[0, 1], [2, 1], [1, 1], [2, 0], [1, 0]], [[0, 1], [1, 1], [2, 0], [0, 2], [1, 0]], [[0, 1], [2, 1], [0, 0], [1, 1], [2, 0]], [[0, 1], [1, 1], [2, 0], [2, 1]], [[1, 2], [2, 1], [2, 0], [0, 2], [2, 2]], [[0, 1], [1, 0], [1, 1], [2, 1]], [[0, 0]], [[1, 0], [0, 0]], [[0, 1], [2, 1], [1, 1], [2, 0], [2, 2]], [[0, 1], [1, 0], [0, 2], [1, 1]], [[0, 1], [2, 1], [3, 1], [1, 1], [2, 0]]];
     this.maxPieceLen = Math.max(...this.myPieces.map(p => p.length));
     this.boardSize = 20;
     this.playerProfile = {
-      id: 0,
+      id: 1,
       color: "#ff00ff",
-      name: "Player 1"
+      name: "Player 1",
+    };
+    this.gameProfile = {
+      id: 0,
+      players: 4,
     };
 
     document.onmousemove = (event) => {
@@ -141,8 +145,6 @@ export default {
         return;
       }
 
-
-
       this.selectedPiece = {
         block: piece,
         index: idx,
@@ -169,6 +171,7 @@ export default {
             const sq = boardSqs[overlapIdx];
             sq.style.backgroundColor = this.playerProfile.color;
             sq.classList.add("occupied");
+            sq.classList.add(`player-${this.playerProfile.id}`);
           });
           this.issueBoardUpdate();
           this.dropPiece(false);
@@ -199,6 +202,48 @@ export default {
         const pRect = psq.getBoundingClientRect();
         pieceCenters.push([pRect.left + (this.$squareSize / 2), pRect.top + (this.$squareSize / 2)]);
       }
+
+      const OccupiedByMe = (idx) => boardSqs[idx].classList.contains(`player-${this.playerProfile.id}`);
+
+      const GetNeighborIdx = (sqIdx, dir) => {
+        if (sqIdx === null) {
+          return null;
+        }
+        switch(dir) {
+          case "left": return sqIdx % this.boardSize > 0 ? sqIdx - 1 : null;
+          case "right": return sqIdx % this.boardSize < (this.boardSize - 1) ? sqIdx + 1 : null;
+          case "up": return sqIdx - this.boardSize > 0 ? sqIdx - this.boardSize : null;
+          case "down": return sqIdx + this.boardSize < this.boardSize**2 ? sqIdx + this.boardSize : null;
+          default: return null;
+        }
+      }
+
+      const HasSideNeighbor = (sqIdx) => {
+        const leftIdx = GetNeighborIdx(sqIdx, "left");
+        const rightIdx = GetNeighborIdx(sqIdx, "right");
+        const upIdx = GetNeighborIdx(sqIdx, "up");
+        const downIdx = GetNeighborIdx(sqIdx, "down");
+        return (
+          (leftIdx !== null && OccupiedByMe(leftIdx))
+          || (rightIdx !== null && OccupiedByMe(rightIdx))
+          || (upIdx !== null && OccupiedByMe(upIdx))
+          || (downIdx !== null && OccupiedByMe(downIdx))
+        );
+      }
+
+      const HasCornerNeighbor = (sqIdx) => {
+        const upLeftIdx = GetNeighborIdx(GetNeighborIdx(sqIdx, "left"), "up");
+        const upRightIdx = GetNeighborIdx(GetNeighborIdx(sqIdx, "right"), "up");
+        const downLeftIdx = GetNeighborIdx(GetNeighborIdx(sqIdx, "left"), "down");
+        const downRightIdx = GetNeighborIdx(GetNeighborIdx(sqIdx, "right"), "down");
+        return (
+          (upLeftIdx !== null && OccupiedByMe(upLeftIdx))
+          || (upRightIdx !== null && OccupiedByMe(upRightIdx))
+          || (downLeftIdx !== null && OccupiedByMe(downLeftIdx))
+          || (downRightIdx !== null && OccupiedByMe(downRightIdx))
+        );
+      }
+
       let intersection = []
       pieceCenters.forEach(psq => {
         const sqOffsetX = Math.floor((psq[0] - boardRect.left) / this.$squareSize);
@@ -208,17 +253,21 @@ export default {
           sqOffsetY >= 0 && sqOffsetY < this.boardSize
         ) {
           const asIdx = sqOffsetX + (sqOffsetY * this.boardSize);
-          if (!boardSqs[asIdx].classList.contains("occupied")) {
-            intersection.push(asIdx);
-          }
+          intersection.push(asIdx);
         }
       });
-      
-      if (intersection.length === pieceCenters.length) {
+
+      let validCorner = false;
+      for (const sq of intersection) {
+        if (boardSqs[sq].classList.contains("occupied") || HasSideNeighbor(sq)) {
+          return [];
+        }
+        validCorner = validCorner || HasCornerNeighbor(sq) || sq === 0;
+      }
+      if (validCorner && intersection.length === pieceCenters.length) {
         return intersection;
       }
       return [];
-      // console.log(piece.children);
     },
     isMyTurn() {
       // TODO
@@ -226,7 +275,10 @@ export default {
     },
     isPlacementValid(placement) {
       // TODO
-      return placement !== null;
+      return placement.length !== 0;
+    },
+    translateBoard() {
+      // TODO
     },
     issueBoardUpdate() {
       // TODO
@@ -283,7 +335,6 @@ export default {
 
 .selected-piece {
   position: absolute;
-  z-index: 1000;
 }
 
 .hidden {
