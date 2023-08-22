@@ -1,6 +1,6 @@
 from typing import Set
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 from piece import Piece
 
@@ -40,13 +40,14 @@ def generate_pieces(degree) -> Set[Piece]:
     return pieces
 
 def show_piece(piece):
-    fig = plt.figure()
-    plt.xlim(0, degree)
-    plt.ylim(0, degree)
-    for block in piece:
-        plt.gca().add_patch(plt.Rectangle(block, 1, 1, fc="blue", ec="black"))
+    # fig = plt.figure()
+    # plt.xlim(0, degree)
+    # plt.ylim(0, degree)
+    # for block in piece:
+    #     plt.gca().add_patch(plt.Rectangle(block, 1, 1, fc="blue", ec="black"))
 
-    plt.show()
+    # plt.show()
+    pass
 
 if __name__ == "__main__":
     # pieces = generate_pieces(degree)

@@ -3,6 +3,7 @@
   If a piece is rotated/flipped while hovering, the highlighting doesn't update
   -->
   <div
+    v-if="board !== null"
     ref="boardRef"
     class="board"
     :style="{
@@ -11,14 +12,19 @@
     }"
   >
     <div
-      v-for="sq in boardSize**2"
-      :key="sq"
+      v-for="sq, idx in board"
+      :key="idx"
       class="board-square"
+      :class="[
+        sq !== null ? 'occupied' : '',
+        sq !== null ? `player-${sq}` : ''
+      ]"
       :style="{
-        left: `${((sq-1)%boardSize)*$squareSize}px`,
-        top: `${Math.floor((sq-1)/boardSize)*$squareSize}px`
+        left: `${(idx%boardSize)*$squareSize}px`,
+        top: `${Math.floor(idx/boardSize)*$squareSize}px`
       }"
     />
+
   </div>
   
   <div class="my-pieces" :style="{height: `${boardSize*$squareSize}px`}">
@@ -54,6 +60,7 @@
 
 <script>
 import Piece from './components/Piece.vue'
+import { ApiClient } from './api/src/index.js'
 
 export default {
   name: 'App',
@@ -62,6 +69,7 @@ export default {
   },
   data() {
     return {
+      board: null,
       myPieces: [],
       playerProfile: {},
       gameProfile: {},
@@ -72,10 +80,14 @@ export default {
       offsetX: null,
       cursorY: null,
       offsetY: null,
+      ws: null,
     }
   },
   mounted: function () {
     // TODO: Fetch these from API
+    const api = this.$api();
+    const x = api.getPiecesPiecesGet(4);
+    console.log(x);
     this.myPieces = [[[0, 1], [1, 0], [1, 1], [0, 0]], [[0, 1], [2, 1], [1, 1], [2, 0], [0, 2]], [[4, 0], [0, 0], [2, 0], [3, 0], [1, 0]], [[0, 1], [1, 2], [2, 1], [1, 1], [1, 0]], [[0, 1], [1, 0], [1, 1]], [[0, 1], [2, 1], [1, 1], [2, 0], [3, 0]], [[0, 1], [2, 1], [3, 1], [1, 1], [3, 0]], [[0, 1], [1, 2], [2, 1], [1, 1], [2, 0]], [[1, 0], [2, 0], [3, 0], [0, 0]], [[1, 0], [2, 0], [0, 0]], [[0, 1], [2, 1], [1, 1], [2, 0], [1, 0]], [[0, 1], [1, 1], [2, 0], [0, 2], [1, 0]], [[0, 1], [2, 1], [0, 0], [1, 1], [2, 0]], [[0, 1], [1, 1], [2, 0], [2, 1]], [[1, 2], [2, 1], [2, 0], [0, 2], [2, 2]], [[0, 1], [1, 0], [1, 1], [2, 1]], [[0, 0]], [[1, 0], [0, 0]], [[0, 1], [2, 1], [1, 1], [2, 0], [2, 2]], [[0, 1], [1, 0], [0, 2], [1, 1]], [[0, 1], [2, 1], [3, 1], [1, 1], [2, 0]]];
     this.maxPieceLen = Math.max(...this.myPieces.map(p => p.length));
     this.boardSize = 20;
@@ -86,7 +98,13 @@ export default {
     };
     this.gameProfile = {
       id: 0,
-      players: 4,
+      players: [
+        {
+          id: 1,
+          color: "#ff00ff",
+          name: "Player 1",
+        }
+      ]
     };
 
     document.onmousemove = (event) => {
@@ -113,6 +131,16 @@ export default {
         }
       }
     };
+
+    const ws = new WebSocket("ws://localhost:8000/ws")
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if ("board" in msg) {
+        this.boardSize = msg.board.length;
+        this.board = msg.board.flat();
+      }
+    }
+    this.ws = ws;
   },
   methods: {
     snapPieceToCursor() {
@@ -165,18 +193,15 @@ export default {
     placePiece() {
       if (this.isMyTurn()) {
         const overlap = this.computePieceOverlap();
-        if (this.isPlacementValid(overlap)) {
-          const boardSqs = this.$refs.boardRef.children;
-          overlap.forEach(overlapIdx => {
-            const sq = boardSqs[overlapIdx];
-            sq.style.backgroundColor = this.playerProfile.color;
-            sq.classList.add("occupied");
-            sq.classList.add(`player-${this.playerProfile.id}`);
-          });
-          this.issueBoardUpdate();
-          this.dropPiece(false);
-        }
-        
+        const boardSqs = this.$refs.boardRef.children;
+        overlap.forEach(overlapIdx => {
+          const sq = boardSqs[overlapIdx];
+          sq.style.backgroundColor = this.playerProfile.color;
+          sq.classList.add("occupied");
+          sq.classList.add(`player-${this.playerProfile.id}`);
+        });
+        this.issueBoardUpdate();
+        this.dropPiece(false);
       }
     },
     handlePieceClick(evt, piece, idx) {
@@ -273,9 +298,20 @@ export default {
       // TODO
       return true;
     },
-    isPlacementValid(placement) {
-      // TODO
-      return placement.length !== 0;
+    async isPlacementValid(placement) {
+      // pick an origin and calculate (x,y) based on that
+      console.log(placement);
+      if (placement.length > 0) {
+        const asXY = (sq) => [sq % this.boardSize, Math.round(sq / this.boardSize)];
+        const origin = asXY(placement[0], this.boardSize);
+        const piece = placement.reduce((acc, sq) => {
+          const coord = asXY(sq, this.boardSize);
+          acc.push([origin[0] - coord[0], origin[1] - coord[1]]);
+          return acc;
+        }, []);
+        console.log(origin, piece);
+      }
+      return true;
     },
     translateBoard() {
       // TODO

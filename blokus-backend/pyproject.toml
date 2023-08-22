@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "blokus-backend"
+version = "0.1.0"
+description = ""
+authors = ["Alex Finestead <acf96@icloud.com>"]
+readme = "README.md"
+packages = [{include = "blokus_backend"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.101.1"
+uvicorn = "^0.23.2"
+numpy = "^1.25.2"
+websockets = "^11.0.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

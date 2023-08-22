@@ -1,5 +1,7 @@
 import asyncio
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Set
 
 import board
@@ -8,6 +10,22 @@ import util
 import piece
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8080"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+game_board = board.Board(20)
+
+async def handle_board_update():
+    print(game_board.board)
+    await manager.broadcast(game_board.board)
+
+game_board.onupdate = handle_board_update
+
 
 @app.get("/")
 async def root():
@@ -25,7 +43,21 @@ async def get_pieces(degree: int):
     pieces = util.generate_pieces(degree)
     for piece in pieces:
         print(piece)
-    return [models.Piece(shape={(x,y) for x,y in piece}) for piece in pieces]
+    return [models.Piece(shape={models.Coordinate(x=x,y=y) for x,y in piece}) for piece in pieces]
+
+
+@app.put("/place", response_class=JSONResponse)
+async def place_piece(
+    player: models.PlayerProfile,
+    piece: models.Piece,
+    origin: models.Coordinate
+):
+    try:
+        with game_board:
+            await game_board.place(piece, origin, player.player_id)
+        return JSONResponse(status_code=200, content="Board updated")
+    except board.InvalidBoardState:
+        return JSONResponse(status_code=400, content="Invalid placement")
 
 
 class ConnectionManager:
@@ -39,7 +71,7 @@ class ConnectionManager:
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
 
-    async def send_personal_message(self, message: dict, websocket: WebSocket):
+    async def send_personal_message(self, websocket: WebSocket, message: dict):
         await websocket.send_json(message)
 
     async def broadcast(self, message: dict):
@@ -50,18 +82,19 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 async def handle_board_update():
-    with board:
-        await manager.broadcast(board.board)
+    with game_board:
+        await manager.broadcast(b.board)
 
 update_queue = asyncio.Queue()
-board = Board(20, onupdate=handle_board_update)
-
 
 @app.websocket("/ws")
 async def game(websocket: WebSocket):
     await manager.connect(websocket)
+    with game_board:
+        await manager.send_personal_message(websocket, dict(board=game_board.board))
     try:
         while True:
             data = await websocket.receive_text()
+            print(data)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
