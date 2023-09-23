@@ -55,7 +55,7 @@ No authorization required
 
 ## placePiecePlacePut
 
-> Object placePiecePlacePut(bodyPlacePiecePlacePut)
+> Object placePiecePlacePut(playerId, bodyPlacePiecePlacePut)
 
 Place Piece
 
@@ -65,8 +65,9 @@ Place Piece
 import BlokusApi from 'blokusApi';
 
 let apiInstance = new BlokusApi.DefaultApi();
+let playerId = null; // Object | 
 let bodyPlacePiecePlacePut = new BlokusApi.BodyPlacePiecePlacePut(); // BodyPlacePiecePlacePut | 
-apiInstance.placePiecePlacePut(bodyPlacePiecePlacePut).then((data) => {
+apiInstance.placePiecePlacePut(playerId, bodyPlacePiecePlacePut).then((data) => {
   console.log('API called successfully. Returned data: ' + data);
 }, (error) => {
   console.error(error);
@@ -79,6 +80,7 @@ apiInstance.placePiecePlacePut(bodyPlacePiecePlacePut).then((data) => {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **playerId** | [**Object**](.md)|  | 
  **bodyPlacePiecePlacePut** | [**BodyPlacePiecePlacePut**](BodyPlacePiecePlacePut.md)|  | 
 
 ### Return type

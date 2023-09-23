@@ -8,7 +8,6 @@ docs/Coordinate.md
 docs/DefaultApi.md
 docs/HTTPValidationError.md
 docs/Piece.md
-docs/PlayerProfile.md
 docs/ValidationError.md
 git_push.sh
 mocha.opts
@@ -20,12 +19,10 @@ src/model/BodyPlacePiecePlacePut.js
 src/model/Coordinate.js
 src/model/HTTPValidationError.js
 src/model/Piece.js
-src/model/PlayerProfile.js
 src/model/ValidationError.js
 test/api/DefaultApi.spec.js
 test/model/BodyPlacePiecePlacePut.spec.js
 test/model/Coordinate.spec.js
 test/model/HTTPValidationError.spec.js
 test/model/Piece.spec.js
-test/model/PlayerProfile.spec.js
 test/model/ValidationError.spec.js

@@ -29,10 +29,11 @@
   
   <div class="my-pieces" :style="{height: `${boardSize*$squareSize}px`}">
     <piece
+      v-if="myPieces.length !== 0"
       class="unplaced-piece"
       v-for="(p,idx) in myPieces"
       :key="idx"
-      :color="playerProfile.color"
+      :color="intToRGB(playerProfile.color)"
       :blocks="p"
       :square-size="10"
       @click.stop="handlePieceClick($event, p, idx)"
@@ -43,7 +44,7 @@
   <piece
     class="selected-piece"
     ref="selectedPieceRef"
-    :color="playerProfile.color"
+    :color="intToRGB(playerProfile.color)"
     :blocks="selectedPiece === null ? [] : selectedPiece.block"
     :square-size="$squareSize"
     :style="{
@@ -86,22 +87,23 @@ export default {
   mounted: function () {
     // TODO: Fetch these from API
     const api = this.$api();
-    const x = api.getPiecesPiecesGet(4);
-    console.log(x);
-    this.myPieces = [[[0, 1], [1, 0], [1, 1], [0, 0]], [[0, 1], [2, 1], [1, 1], [2, 0], [0, 2]], [[4, 0], [0, 0], [2, 0], [3, 0], [1, 0]], [[0, 1], [1, 2], [2, 1], [1, 1], [1, 0]], [[0, 1], [1, 0], [1, 1]], [[0, 1], [2, 1], [1, 1], [2, 0], [3, 0]], [[0, 1], [2, 1], [3, 1], [1, 1], [3, 0]], [[0, 1], [1, 2], [2, 1], [1, 1], [2, 0]], [[1, 0], [2, 0], [3, 0], [0, 0]], [[1, 0], [2, 0], [0, 0]], [[0, 1], [2, 1], [1, 1], [2, 0], [1, 0]], [[0, 1], [1, 1], [2, 0], [0, 2], [1, 0]], [[0, 1], [2, 1], [0, 0], [1, 1], [2, 0]], [[0, 1], [1, 1], [2, 0], [2, 1]], [[1, 2], [2, 1], [2, 0], [0, 2], [2, 2]], [[0, 1], [1, 0], [1, 1], [2, 1]], [[0, 0]], [[1, 0], [0, 0]], [[0, 1], [2, 1], [1, 1], [2, 0], [2, 2]], [[0, 1], [1, 0], [0, 2], [1, 1]], [[0, 1], [2, 1], [3, 1], [1, 1], [2, 0]]];
-    this.maxPieceLen = Math.max(...this.myPieces.map(p => p.length));
+    api.getPiecesPiecesGet(4).then(r => {
+      this.myPieces = r.map(p => p.shape.map(b => [b.x, b.y]));
+      this.maxPieceLen = Math.max(...this.myPieces.map(p => p.length));
+      
+    });
     this.boardSize = 20;
     this.playerProfile = {
-      id: 1,
-      color: "#ff00ff",
+      player_id: 1,
+      color: 0xff00ff,
       name: "Player 1",
     };
     this.gameProfile = {
       id: 0,
       players: [
         {
-          id: 1,
-          color: "#ff00ff",
+          player_id: 1,
+          color: 0xff00ff,
           name: "Player 1",
         }
       ]
@@ -138,11 +140,24 @@ export default {
       if ("board" in msg) {
         this.boardSize = msg.board.length;
         this.board = msg.board.flat();
+        console.log("UPDATE");
+        console.log(this.board);
       }
     }
     this.ws = ws;
   },
   methods: {
+    intToRGB(colorInt) {
+      return colorInt != null ?
+        `#${colorInt.toString(16)}` :
+        "#ffffff";
+    },
+    idxToXY(idx) {
+      return {
+        x: idx % this.boardSize,
+        y: Math.floor(idx / this.boardSize),
+      }
+    },
     snapPieceToCursor() {
       // debugger; // eslint-disable-line
       // Find left most block
@@ -192,15 +207,15 @@ export default {
     },
     placePiece() {
       if (this.isMyTurn()) {
-        const overlap = this.computePieceOverlap();
+        const placement = this.computePieceOverlap();
         const boardSqs = this.$refs.boardRef.children;
-        overlap.forEach(overlapIdx => {
-          const sq = boardSqs[overlapIdx];
-          sq.style.backgroundColor = this.playerProfile.color;
+        placement.forEach(placementIdx => {
+          const sq = boardSqs[placementIdx];
+          sq.style.backgroundColor = this.intToRGB(this.playerProfile.color);
           sq.classList.add("occupied");
           sq.classList.add(`player-${this.playerProfile.id}`);
         });
-        this.issueBoardUpdate();
+        this.issueBoardUpdate(placement);
         this.dropPiece(false);
       }
     },
@@ -316,8 +331,26 @@ export default {
     translateBoard() {
       // TODO
     },
-    issueBoardUpdate() {
-      // TODO
+    issueBoardUpdate(piece) {
+      console.log(piece);
+      const origin = this.idxToXY(piece[0]);
+      const shape = piece.map(tile => ({
+        x: this.idxToXY(tile).x - origin.x,
+        y: this.idxToXY(tile).y - origin.y
+      }));
+      console.log(origin);
+      console.log(shape)
+
+      const api = this.$api()
+      api.placePiecePlacePut(
+        this.playerProfile.player_id,
+        {
+          "piece": {
+            "shape": shape
+          },
+          "origin": origin
+        }
+      );
       return;
     },
   },

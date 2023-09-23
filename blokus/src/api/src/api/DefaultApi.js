@@ -16,7 +16,6 @@ import ApiClient from "../ApiClient";
 import BodyPlacePiecePlacePut from '../model/BodyPlacePiecePlacePut';
 import HTTPValidationError from '../model/HTTPValidationError';
 
-
 export default class DefaultApi {
 
     
@@ -57,8 +56,12 @@ export default class DefaultApi {
           return response_and_data.data;
         });
     }
-    placePiecePlacePutWithHttpInfo(bodyPlacePiecePlacePut) {
+    placePiecePlacePutWithHttpInfo(playerId, bodyPlacePiecePlacePut) {
       let postBody = bodyPlacePiecePlacePut;
+      // verify the required parameter 'playerId' is set
+      if (playerId === undefined || playerId === null) {
+        throw new Error("Missing the required parameter 'playerId' when calling placePiecePlacePut");
+      }
       // verify the required parameter 'bodyPlacePiecePlacePut' is set
       if (bodyPlacePiecePlacePut === undefined || bodyPlacePiecePlacePut === null) {
         throw new Error("Missing the required parameter 'bodyPlacePiecePlacePut' when calling placePiecePlacePut");
@@ -67,6 +70,7 @@ export default class DefaultApi {
       let pathParams = {
       };
       let queryParams = {
+        'player_id': playerId
       };
       let headerParams = {
       };
@@ -83,8 +87,8 @@ export default class DefaultApi {
         authNames, contentTypes, accepts, returnType, null
       );
     }
-    placePiecePlacePut(bodyPlacePiecePlacePut) {
-      return this.placePiecePlacePutWithHttpInfo(bodyPlacePiecePlacePut)
+    placePiecePlacePut(playerId, bodyPlacePiecePlacePut) {
+      return this.placePiecePlacePutWithHttpInfo(playerId, bodyPlacePiecePlacePut)
         .then(function(response_and_data) {
           return response_and_data.data;
         });

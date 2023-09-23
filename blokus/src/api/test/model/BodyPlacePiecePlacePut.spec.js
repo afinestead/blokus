@@ -54,12 +54,6 @@
       //expect(instance).to.be.a(BlokusApi.BodyPlacePiecePlacePut);
     });
 
-    it('should have the property player (base name: "player")', function() {
-      // uncomment below and update the code to test the property player
-      //var instance = new BlokusApi.BodyPlacePiecePlacePut();
-      //expect(instance).to.be();
-    });
-
     it('should have the property piece (base name: "piece")', function() {
       // uncomment below and update the code to test the property piece
       //var instance = new BlokusApi.BodyPlacePiecePlacePut();

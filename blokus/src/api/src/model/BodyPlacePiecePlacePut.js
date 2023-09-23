@@ -14,19 +14,17 @@
 import ApiClient from '../ApiClient';
 import Coordinate from './Coordinate';
 import Piece from './Piece';
-import PlayerProfile from './PlayerProfile';
 
 
 class BodyPlacePiecePlacePut {
     
-    constructor(player, piece, origin) { 
+    constructor(piece, origin) { 
         
-        BodyPlacePiecePlacePut.initialize(this, player, piece, origin);
+        BodyPlacePiecePlacePut.initialize(this, piece, origin);
     }
 
     
-    static initialize(obj, player, piece, origin) { 
-        obj['player'] = player;
+    static initialize(obj, piece, origin) { 
         obj['piece'] = piece;
         obj['origin'] = origin;
     }
@@ -36,9 +34,6 @@ class BodyPlacePiecePlacePut {
         if (data) {
             obj = obj || new BodyPlacePiecePlacePut();
 
-            if (data.hasOwnProperty('player')) {
-                obj['player'] = PlayerProfile.constructFromObject(data['player']);
-            }
             if (data.hasOwnProperty('piece')) {
                 obj['piece'] = Piece.constructFromObject(data['piece']);
             }
@@ -57,10 +52,6 @@ class BodyPlacePiecePlacePut {
                 throw new Error("The required field `" + property + "` is not found in the JSON data: " + JSON.stringify(data));
             }
         }
-        // validate the optional field `player`
-        if (data['player']) { // data not null
-          PlayerProfile.validateJSON(data['player']);
-        }
         // validate the optional field `piece`
         if (data['piece']) { // data not null
           Piece.validateJSON(data['piece']);
@@ -76,10 +67,7 @@ class BodyPlacePiecePlacePut {
 
 }
 
-BodyPlacePiecePlacePut.RequiredProperties = ["player", "piece", "origin"];
-
-
-BodyPlacePiecePlacePut.prototype['player'] = undefined;
+BodyPlacePiecePlacePut.RequiredProperties = ["piece", "origin"];
 
 
 BodyPlacePiecePlacePut.prototype['piece'] = undefined;

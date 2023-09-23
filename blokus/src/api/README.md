@@ -130,7 +130,6 @@ Class | Method | HTTP request | Description
  - [BlokusApi.Coordinate](docs/Coordinate.md)
  - [BlokusApi.HTTPValidationError](docs/HTTPValidationError.md)
  - [BlokusApi.Piece](docs/Piece.md)
- - [BlokusApi.PlayerProfile](docs/PlayerProfile.md)
  - [BlokusApi.ValidationError](docs/ValidationError.md)
 
 

@@ -20,11 +20,8 @@ app.add_middleware(
 
 game_board = board.Board(20)
 
-async def handle_board_update():
-    print(game_board.board)
-    await manager.broadcast(game_board.board)
-
-game_board.onupdate = handle_board_update
+async def handle_board_update(board):
+    await manager.broadcast(board)
 
 
 @app.get("/")
@@ -48,13 +45,14 @@ async def get_pieces(degree: int):
 
 @app.put("/place", response_class=JSONResponse)
 async def place_piece(
-    player: models.PlayerProfile,
+    player_id: int,
     piece: models.Piece,
     origin: models.Coordinate
 ):
     try:
         with game_board:
-            await game_board.place(piece, origin, player.player_id)
+            await game_board.place(piece, origin, player_id)
+            await handle_board_update(game_board.board)
         return JSONResponse(status_code=200, content="Board updated")
     except board.InvalidBoardState:
         return JSONResponse(status_code=400, content="Invalid placement")
@@ -75,16 +73,13 @@ class ConnectionManager:
         await websocket.send_json(message)
 
     async def broadcast(self, message: dict):
+        print("Broadcasting update")
         for connection in self.active_connections:
+            print(message)
             await connection.send_json(message)
 
 
 manager = ConnectionManager()
-
-async def handle_board_update():
-    with game_board:
-        await manager.broadcast(b.board)
-
 update_queue = asyncio.Queue()
 
 @app.websocket("/ws")

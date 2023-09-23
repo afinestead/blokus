@@ -14,7 +14,6 @@ class Board:
         self.dimension = dimension
         self.board = [[None]*dimension for _ in range(dimension)]
         self.lock = Lock()
-        self.onupdate = None
     
     def __str__(self):
         s = "[" + "---"*self.dimension + "]\n"
@@ -52,6 +51,9 @@ class Board:
             return self.get_board_square(coord) == player_id
 
         def get_neighbor(coord: models.Coordinate, direction: str) -> models.Coordinate:
+            if coord is None:
+                return None
+
             if direction == "left":
                 return models.Coordinate(x=coord.x-1,y=coord.y) if coord.x > 0 else None
             elif direction == "right":
@@ -109,5 +111,3 @@ class Board:
         for coord in piece.shape:
             abs_coord = models.Coordinate(x=origin.x+coord.x, y=origin.y+coord.y)
             self.set_board_square(abs_coord, player_id)
-
-        await self.onupdate()

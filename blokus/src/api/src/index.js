@@ -17,7 +17,6 @@ import BodyPlacePiecePlacePut from './model/BodyPlacePiecePlacePut';
 import Coordinate from './model/Coordinate';
 import HTTPValidationError from './model/HTTPValidationError';
 import Piece from './model/Piece';
-import PlayerProfile from './model/PlayerProfile';
 import ValidationError from './model/ValidationError';
 import DefaultApi from './api/DefaultApi';
 
@@ -38,9 +37,6 @@ export {
 
     
     Piece,
-
-    
-    PlayerProfile,
 
     
     ValidationError,
