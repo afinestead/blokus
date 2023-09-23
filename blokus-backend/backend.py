@@ -21,7 +21,7 @@ app.add_middleware(
 game_board = board.Board(20)
 
 async def handle_board_update(board):
-    await manager.broadcast(board)
+    await manager.broadcast(dict(board=board))
 
 
 @app.get("/")
@@ -75,7 +75,6 @@ class ConnectionManager:
     async def broadcast(self, message: dict):
         print("Broadcasting update")
         for connection in self.active_connections:
-            print(message)
             await connection.send_json(message)
 
 
@@ -85,6 +84,7 @@ update_queue = asyncio.Queue()
 @app.websocket("/ws")
 async def game(websocket: WebSocket):
     await manager.connect(websocket)
+    # When a new user connects, send them the current game state
     with game_board:
         await manager.send_personal_message(websocket, dict(board=game_board.board))
     try:
