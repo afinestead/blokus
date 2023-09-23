@@ -4,7 +4,6 @@ version = "0.1.0"
 description = ""
 authors = ["Alex Finestead <acf96@icloud.com>"]
 readme = "README.md"
-packages = [{include = "blokus_backend"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"

@@ -134,7 +134,7 @@ export default {
       }
     };
 
-    const ws = new WebSocket("ws://localhost:8000/ws")
+    const ws = new WebSocket(`ws://${this.$apiLocation}/ws`)
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
       if ("board" in msg) {
