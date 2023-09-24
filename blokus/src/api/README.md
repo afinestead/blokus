@@ -102,8 +102,8 @@ var BlokusApi = require('blokusApi');
 
 
 var api = new BlokusApi.DefaultApi()
-var degree = null; // {Object} 
-api.getPiecesPiecesGet(degree).then(function(data) {
+var pid = null; // {Object} 
+api.getPiecesPiecesGet(pid).then(function(data) {
   console.log('API called successfully. Returned data: ' + data);
 }, function(error) {
   console.error(error);

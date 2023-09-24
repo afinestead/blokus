@@ -16,6 +16,7 @@ import ApiClient from "../ApiClient";
 import BodyPlacePiecePlacePut from '../model/BodyPlacePiecePlacePut';
 import HTTPValidationError from '../model/HTTPValidationError';
 
+
 export default class DefaultApi {
 
     
@@ -23,17 +24,17 @@ export default class DefaultApi {
         this.apiClient = apiClient || ApiClient.instance;
     }
 
-    getPiecesPiecesGetWithHttpInfo(degree) {
+    getPiecesPiecesGetWithHttpInfo(pid) {
       let postBody = null;
-      // verify the required parameter 'degree' is set
-      if (degree === undefined || degree === null) {
-        throw new Error("Missing the required parameter 'degree' when calling getPiecesPiecesGet");
+      // verify the required parameter 'pid' is set
+      if (pid === undefined || pid === null) {
+        throw new Error("Missing the required parameter 'pid' when calling getPiecesPiecesGet");
       }
 
       let pathParams = {
       };
       let queryParams = {
-        'degree': degree
+        'pid': pid
       };
       let headerParams = {
       };
@@ -50,8 +51,8 @@ export default class DefaultApi {
         authNames, contentTypes, accepts, returnType, null
       );
     }
-    getPiecesPiecesGet(degree) {
-      return this.getPiecesPiecesGetWithHttpInfo(degree)
+    getPiecesPiecesGet(pid) {
+      return this.getPiecesPiecesGetWithHttpInfo(pid)
         .then(function(response_and_data) {
           return response_and_data.data;
         });

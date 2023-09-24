@@ -13,7 +13,7 @@ Method | HTTP request | Description
 
 ## getPiecesPiecesGet
 
-> Object getPiecesPiecesGet(degree)
+> Object getPiecesPiecesGet(pid)
 
 Get Pieces
 
@@ -23,8 +23,8 @@ Get Pieces
 import BlokusApi from 'blokusApi';
 
 let apiInstance = new BlokusApi.DefaultApi();
-let degree = null; // Object | 
-apiInstance.getPiecesPiecesGet(degree).then((data) => {
+let pid = null; // Object | 
+apiInstance.getPiecesPiecesGet(pid).then((data) => {
   console.log('API called successfully. Returned data: ' + data);
 }, (error) => {
   console.error(error);
@@ -37,7 +37,7 @@ apiInstance.getPiecesPiecesGet(degree).then((data) => {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **degree** | [**Object**](.md)|  | 
+ **pid** | [**Object**](.md)|  | 
 
 ### Return type
 

@@ -2,6 +2,12 @@
   <!-- TODO:
   If a piece is rotated/flipped while hovering, the highlighting doesn't update
   -->
+  <div class="active-players">
+    <div v-for="player in allPlayers" class="player-card">
+      {{ player.name }}
+    </div>
+  </div>
+
   <div
     v-if="board !== null"
     ref="boardRef"
@@ -12,7 +18,7 @@
     }"
   >
     <div
-      v-for="pid, idx in board"
+      v-for="pid, idx in flatBoard"
       :key="idx"
       class="board-square"
       :class="[
@@ -21,7 +27,8 @@
       ]"
       :style="{
         left: `${(idx%boardSize)*squareSize}px`,
-        top: `${Math.floor(idx/boardSize)*squareSize}px`
+        top: `${Math.floor(idx/boardSize)*squareSize}px`,
+        backgroundColor: playerColor(pid),
       }"
     />
 
@@ -33,7 +40,7 @@
       class="unplaced-piece"
       v-for="(p,idx) in myPieces"
       :key="idx"
-      :color="playerColor"
+      :color="playerColor(playerID)"
       :blocks="p"
       :square-size="10"
       @click.stop="handlePieceClick($event, p, idx)"
@@ -44,7 +51,7 @@
   <piece
     class="selected-piece"
     ref="selectedPieceRef"
-    :color="playerColor"
+    :color="playerColor(playerID)"
     :blocks="selectedPiece === null ? [] : selectedPiece.block"
     :square-size="squareSize"
     :style="{
@@ -73,13 +80,13 @@ const board = ref([]);
 const boardSize = ref(0);
 const boardRef = ref(null)
 const myPieces = ref([]);
-const gameProfile = ref({});
+const allPlayers = ref([]);
 const playerID = ref(null);
-const playerColor = computed(() => {
-  const colorInt = gameProfile.value?.players?.find(p => p.player_id === playerID.value)?.color;
+const playerColor = computed(() => (pid) => {
+  const colorInt = allPlayers.value.find(p => p.player_id === pid)?.color;
   return colorInt != null ? `#${colorInt.toString(16)}` : "#ffffff";
 });
-const playerName = computed(() => gameProfile.value?.players?.find(p => p.player_id === playerID.value)?.name);
+const playerName = computed((pid) => allPlayers.value.find(p => p.player_id === pid)?.name);
 const maxPieceLen = computed(() => Math.max(...myPieces.map(p => p.length)));
 const selectedPiece = ref(null);
 const selectedPieceRef = ref(null);
@@ -89,23 +96,14 @@ const cursorY = ref(null);
 const offsetY = ref(null);
 const ws = ref(null);
 
-onMounted(() => {
-  // TODO: Fetch these from API
-  api.getPiecesPiecesGet(4).then(r => {
-    myPieces.value = r.map(p => p.shape.map(b => [b.x, b.y]));    
-  });
-  playerID.value = 1; // TODO: Fetch
+const translatedBoard = computed(() => {
+  const mat = translateBoard(board.value, playerID.value)
+  console.log(mat);
+  return mat;
+});
+const flatBoard = computed(() => translatedBoard.value?.flat())
 
-  gameProfile.value = {
-    id: 0,
-    players: [
-      {
-        player_id: 1,
-        color: 0xff00ff,
-        name: "Player 1",
-      }
-    ]
-  };
+onMounted(() => {
 
   document.onmousemove = (event) => {
     cursorX.value = event.pageX;
@@ -136,22 +134,24 @@ onMounted(() => {
   new_ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     console.log(msg);
+    if ("player_id" in msg) {
+      playerID.value = msg.player_id;
+      api.getPiecesPiecesGet(playerID.value).then(r => {
+        myPieces.value = r.map(p => p.shape.map(b => [b.x, b.y]));    
+      });
+    }
+    if ("players" in msg) {
+      allPlayers.value = msg.players;
+    }
     if ("board" in msg) {
       boardSize.value = msg.board.length;
-      board.value = msg.board.flat();
+      board.value = msg.board;
       console.log("UPDATE");
       console.log(board);
     }
   }
   ws.value = new_ws;
 });
-
-  
-function intToRGB(colorInt) {
-  return colorInt != null ?
-    `#${colorInt.toString(16)}` :
-    "#ffffff";
-};
 
 function idxToXY(idx) {
   return {
@@ -219,7 +219,7 @@ function placePiece() {
     console.log(placement);
     placement.forEach(placementIdx => {
       const sq = boardSqs[placementIdx];
-      sq.style.backgroundColor = playerColor.value;
+      sq.style.backgroundColor = playerColor.value(playerID.value);
       sq.classList.add("occupied");
       sq.classList.add(`player-${playerID.value}`);
     });
@@ -341,19 +341,46 @@ async function isPlacementValid(placement) {
   return true;
 };
 
-function translateBoard() {
-  // TODO
+function translateBoard(matrix, n) {
+  if (!matrix.length) {
+    return [];
+  }
+  if (n === 1) {
+    return matrix;
+  }
+  matrix = matrix[0].map((_, i) => matrix.map(row => row[i]).reverse())
+  return translateBoard(matrix, n - 1);
 };
 
 function issueBoardUpdate(piece) {
   console.log(piece);
-  const origin = idxToXY(piece[0]);
-  const shape = piece.map(tile => ({
-    x: idxToXY(tile).x - origin.x,
-    y: idxToXY(tile).y - origin.y
+
+  const translatePoint = (pt, n) => {
+    if (n === 1) {
+      return pt;
+    }
+
+    const rotatedX = pt.y;
+    const rotatedY = boardSize.value - pt.x - 1;
+
+    return translatePoint({
+      x: (rotatedX + boardSize.value) % boardSize.value,
+      y: (rotatedY + boardSize.value) % boardSize.value
+    }, n - 1);
+  };
+
+  const pieceXY = piece.map(tile => ({x: idxToXY(tile).x, y: idxToXY(tile).y}));
+  const translatedPiece = pieceXY.map(tile => translatePoint(tile, playerID.value));
+  const origin = translatedPiece[0];
+
+  const shape = translatedPiece.map(tile => ({
+    x: tile.x - origin.x,
+    y: tile.y - origin.y
   }));
-  console.log(origin);
-  console.log(shape)
+
+  // console.log(pieceXY);
+  console.log(translatedPiece);
+  console.log(shape);
 
   api.placePiecePlacePut(
     playerID.value,
@@ -366,8 +393,6 @@ function issueBoardUpdate(piece) {
   );
   return;
 };
-
-watch(boardSize, (newSize) => {console.log(newSize)});
 
 watch(selectedPiece, (newPiece) => {
   if (newPiece === null) {
@@ -397,12 +422,23 @@ watch(selectedPiece, (newPiece) => {
   width: 20px;
 }
 
+.active-players {
+  display: block;
+  position: relative;
+  float: left;
+  padding-right: 2em;
+}
+
+.player-card {
+  display: block;
+}
+
 .highlighted {
   border-color: yellow;
 }
 
 .my-pieces {
-  width: 50%;
+  width: 40%;
   margin-left: 2em;
   position: relative;
   float: left;
