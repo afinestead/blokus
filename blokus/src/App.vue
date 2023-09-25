@@ -28,7 +28,7 @@
       :style="{
         left: `${(idx%boardSize)*squareSize}px`,
         top: `${Math.floor(idx/boardSize)*squareSize}px`,
-        backgroundColor: playerColor(pid),
+        backgroundColor: playerColors[pid],
       }"
     />
 
@@ -40,7 +40,7 @@
       class="unplaced-piece"
       v-for="(p,idx) in myPieces"
       :key="idx"
-      :color="playerColor(playerID)"
+      :color="playerColors[playerID]"
       :blocks="p"
       :square-size="10"
       @click.stop="handlePieceClick($event, p, idx)"
@@ -51,7 +51,7 @@
   <piece
     class="selected-piece"
     ref="selectedPieceRef"
-    :color="playerColor(playerID)"
+    :color="playerColors[playerID]"
     :blocks="selectedPiece === null ? [] : selectedPiece.block"
     :square-size="squareSize"
     :style="{
@@ -67,7 +67,7 @@
 </template>
 
 <script setup>
-import { nextTick, onMounted, ref, reacted, computed, watch } from 'vue'
+import { nextTick, onMounted, ref, reactive, computed, watch } from 'vue'
 import Piece from './components/Piece.vue'
 import { ApiClient, DefaultApi } from './api/src/index.js'
 
@@ -75,18 +75,14 @@ const apiLocation = "localhost:8888";
 const api = new DefaultApi(new ApiClient(`http://${apiLocation}`));
 const squareSize = 21;
 
-
 const board = ref([]);
 const boardSize = ref(0);
 const boardRef = ref(null)
 const myPieces = ref([]);
 const allPlayers = ref([]);
 const playerID = ref(null);
-const playerColor = computed(() => (pid) => {
-  const colorInt = allPlayers.value.find(p => p.player_id === pid)?.color;
-  return colorInt != null ? `#${colorInt.toString(16)}` : "#ffffff";
-});
-const playerName = computed((pid) => allPlayers.value.find(p => p.player_id === pid)?.name);
+const playerColors = reactive({});
+const playerName = computed(() => (pid) => allPlayers.value.find(p => p.player_id === pid)?.name);
 const maxPieceLen = computed(() => Math.max(...myPieces.map(p => p.length)));
 const selectedPiece = ref(null);
 const selectedPieceRef = ref(null);
@@ -97,9 +93,7 @@ const offsetY = ref(null);
 const ws = ref(null);
 
 const translatedBoard = computed(() => {
-  const mat = translateBoard(board.value, playerID.value)
-  console.log(mat);
-  return mat;
+  return translateBoard(board.value, playerID.value)
 });
 const flatBoard = computed(() => translatedBoard.value?.flat())
 
@@ -142,12 +136,14 @@ onMounted(() => {
     }
     if ("players" in msg) {
       allPlayers.value = msg.players;
+      allPlayers.value.forEach(player => {
+        const colorInt = player.color;
+        playerColors[player.player_id] = colorInt ? `#${colorInt.toString(16)}` : "#ffffff";
+      });
     }
     if ("board" in msg) {
       boardSize.value = msg.board.length;
       board.value = msg.board;
-      console.log("UPDATE");
-      console.log(board);
     }
   }
   ws.value = new_ws;
@@ -216,15 +212,15 @@ function placePiece() {
   if (isMyTurn()) {
     const placement = computePieceOverlap();
     const boardSqs = boardRef.value.children;
-    console.log(placement);
     placement.forEach(placementIdx => {
       const sq = boardSqs[placementIdx];
-      sq.style.backgroundColor = playerColor.value(playerID.value);
+      sq.style.backgroundColor = playerColors[playerID.value];
       sq.classList.add("occupied");
       sq.classList.add(`player-${playerID.value}`);
     });
-    issueBoardUpdate(placement);
-    dropPiece(false);
+    issueBoardUpdate(placement)
+      .then(() => dropPiece(false))
+      .catch(console.log);
   }
 };
 
@@ -325,22 +321,6 @@ function isMyTurn() {
   return true;
 };
 
-async function isPlacementValid(placement) {
-  // pick an origin and calculate (x,y) based on that
-  console.log(placement);
-  if (placement.length > 0) {
-    const asXY = (sq) => [sq % boardSize.value, Math.round(sq / boardSize.value)];
-    const origin = asXY(placement[0], boardSize.value);
-    const piece = placement.reduce((acc, sq) => {
-      const coord = asXY(sq, boardSize.value);
-      acc.push([origin[0] - coord[0], origin[1] - coord[1]]);
-      return acc;
-    }, []);
-    console.log(origin, piece);
-  }
-  return true;
-};
-
 function translateBoard(matrix, n) {
   if (!matrix.length) {
     return [];
@@ -353,7 +333,6 @@ function translateBoard(matrix, n) {
 };
 
 function issueBoardUpdate(piece) {
-  console.log(piece);
 
   const translatePoint = (pt, n) => {
     if (n === 1) {
@@ -378,11 +357,8 @@ function issueBoardUpdate(piece) {
     y: tile.y - origin.y
   }));
 
-  // console.log(pieceXY);
-  console.log(translatedPiece);
-  console.log(shape);
 
-  api.placePiecePlacePut(
+  return api.placePiecePlacePut(
     playerID.value,
     {
       "piece": {
@@ -391,7 +367,6 @@ function issueBoardUpdate(piece) {
       "origin": origin
     }
   );
-  return;
 };
 
 watch(selectedPiece, (newPiece) => {

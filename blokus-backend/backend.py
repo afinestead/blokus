@@ -20,10 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-game_state = gamemanager.GameManager(2, 5)
-game_board = board.Board(20)
-player_counter = itertools.count(1)
-players = []
+game_state = gamemanager.GameManager(players=2, block_degree=5, board_size=20)
 
 async def handle_board_update(board):
     await manager.broadcast(dict(board=board))
@@ -63,12 +60,11 @@ async def place_piece(
 ):
     try:
         with game_state:
-            # if game_state.whose_turn != player_id:
-            #     return JSONResponse(status_code=409, content="Not your turn silly")
-            with game_board:
-                await game_board.place(piece, origin, player_id)
-                await handle_board_update(game_board.board)
-                game_state.next_turn()
+            if game_state.whose_turn != player_id:
+                return JSONResponse(status_code=409, content="Not your turn silly")
+            await game_state.board.place(piece, origin, player_id)
+            await handle_board_update(game_state.board.board)
+            game_state.next_turn()
 
         return JSONResponse(status_code=200, content="Board updated")
     except board.InvalidBoardState:
@@ -102,20 +98,24 @@ async def game(websocket: WebSocket):
     await manager.connect(websocket)
 
     try:
-        new_player = game_state.add_player()
+        with game_state:
+            new_player = game_state.add_player()
     except gamemanager.GameManager.InvalidGameState:
         await manager.disconnect(websocket)
 
     # When a new user connects, send them the current game state
-    with game_board:
+    with game_state:
         await manager.send_personal_message(websocket, dict(
             player_id=new_player.pid,
-            board=game_board.board
+            board=game_state.board.board
         ))
         await handle_players_change()
     try:
         while True:
             data = await websocket.receive_text()
             print(data)
+            # TODO: Use data from client
     except WebSocketDisconnect:
+        with game_state:
+            game_state.remove_player(new_player.pid)
         manager.disconnect(websocket)
