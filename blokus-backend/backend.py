@@ -1,15 +1,35 @@
 import asyncio
 import itertools
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Cookie,
+    Depends,
+    FastAPI,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+    Security,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+    WebSocketException,
+    status as FastAPIStatus,
+)
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Set
+from os import urandom
+from typing import Annotated, Any, Dict, List, Mapping, Union
 
+import authorization
 import board
-import gamemanager
+from gamemanager import GameManager, GameServer
 import models
 import util
 import piece
+from socketmanager import SocketManager
+
+SECRET_KEY = urandom(32)
 
 app = FastAPI()
 app.add_middleware(
@@ -20,50 +40,104 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-game_state = gamemanager.GameManager(players=2, block_degree=5, board_size=20)
+socket_manager = SocketManager()
+game_server = GameServer()
 
-async def handle_board_update(board):
-    await manager.broadcast(dict(board=board))
-
-async def handle_players_change():
-    await manager.broadcast(dict(players=[
-        dict(
-            player_id=p.pid,
-            color=p.color,
-            name=p.name,
-        ) for p in game_state.players.values()
-    ]))
-
-
-@app.get("/")
-async def root():
-    return {"message": "yup"}
-
-@app.post("/start")
-async def start_game():
+ResponseTypeType = Mapping[Union[int, str], Dict[str, Any]]
+InvalidCredentialsResponseType: ResponseTypeType = {
+    401: {"description": "Invalid credentials", "model": models.Message}
+}
+class InvalidCredentialsException(Exception):
     pass
 
-@app.get(
-    "/pieces",
-    response_model=List[models.Piece]
+
+def verify_player_token(
+    token_header: Annotated[str | None, Header()] = None,
+    token_query: Annotated[str | None, Query()] = None,
+):
+    print(token_header, token_query)
+    try:
+        return authorization.decode_access_token(token_header, SECRET_KEY)
+    except authorization.AuthorizationError:
+        pass
+    try:
+        return authorization.decode_access_token(token_query, SECRET_KEY)
+    except authorization.AuthorizationError:
+        pass
+
+    raise HTTPException(status_code=401, detail="Invalid token")
+
+
+@app.post(
+    "/game/create",
+    response_model=models.GameID,
 )
-async def get_pieces(pid: int):
-    pieces = game_state.get_player_pieces(pid)
-    return [models.Piece(shape={models.Coordinate(x=x,y=y) for x,y in piece}) for piece in pieces]
+async def create_new_game(game_config: models.GameConfig):
+    return game_server.create_game(game_config)
+
+@app.post(
+    "/game/{game_id}/join",
+    response_model=models.AccessToken,
+)
+async def join_game(game_id: str):
+    try:
+        player_internal = game_server.join_game(game_id)
+        return models.AccessToken(access_token=authorization.create_access_token(
+            player_internal.pid, 
+            game_id, 
+            SECRET_KEY,
+            60,
+        ))
+        # return models.PlayerProfile(
+        #     player_id=player_internal.pid,
+        #     color=player_internal.color,
+        #     name=player_internal.name,
+        #     pieces=[models.Piece(shape={models.Coordinate(x=x,y=y) for x,y in piece}) for piece in player_internal.pieces],
+        # )
+    except KeyError:
+        return JSONResponse(status_code=404, content="Unknown game") 
+    except GameManager.InvalidGameState:
+        return JSONResponse(status_code=409, content="Player capacity reached")
+
+@app.get(
+    "/player",
+    response_model=models.PlayerProfile,
+    responses={**InvalidCredentialsResponseType,},
+)
+async def get_current_player(
+    token: Annotated[models.AccessToken, Depends(verify_player_token)],
+):
+    print(token)
+    try:
+        game_state = game_server.get_game(token["game_id"])
+    except KeyError:
+        return HTTPException(status_code=404, detail="Unknown game")
+    with game_state:
+        player = game_state.get_player_by_id(token["player_id"])
+
+    return models.PlayerProfile(
+        player_id=player.pid,
+        color=player.color,
+        name=player.name,
+        pieces=[models.Piece(shape={models.Coordinate(x=x,y=y) for x,y in piece}) for piece in player.pieces]
+    )
 
 
 @app.put("/place", response_class=JSONResponse)
 async def place_piece(
-    player_id: int,
     piece: models.Piece,
-    origin: models.Coordinate
+    origin: models.Coordinate,
+    token: Annotated[models.AccessToken, Depends(verify_player_token)],
 ):
     try:
+        game_state = game_server.get_game(token["game_id"])
+    except KeyError:
+        return HTTPException(status_code=404, detail="Unknown game")
+    try:
         with game_state:
-            if game_state.whose_turn != player_id:
+            if game_state.whose_turn != token["player_id"]:
                 return JSONResponse(status_code=409, content="Not your turn silly")
-            await game_state.board.place(piece, origin, player_id)
-            await handle_board_update(game_state.board.board)
+            await game_state.place_piece(piece, origin, token["player_id"])
             game_state.next_turn()
 
         return JSONResponse(status_code=200, content="Board updated")
@@ -71,51 +145,19 @@ async def place_piece(
         return JSONResponse(status_code=400, content="Invalid placement")
 
 
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: list[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-
-    async def send_personal_message(self, websocket: WebSocket, message: dict):
-        await websocket.send_json(message)
-
-    async def broadcast(self, message: dict):
-        for connection in self.active_connections:
-            await connection.send_json(message)
-
-
-manager = ConnectionManager()
-update_queue = asyncio.Queue()
 
 @app.websocket("/ws")
-async def game(websocket: WebSocket):
-    await manager.connect(websocket)
-
+async def game(
+    websocket: WebSocket,
+    token: Annotated[models.AccessToken, Depends(verify_player_token)],
+):
     try:
-        with game_state:
-            new_player = game_state.add_player()
-    except gamemanager.GameManager.InvalidGameState:
-        await manager.disconnect(websocket)
+        game_state = game_server.get_game(token["game_id"])
+    except KeyError:
+        return WebSocketException(code=FastAPIStatus.WS_1008_POLICY_VIOLATION)
+    
+    await game_state.connect_player(websocket, pid=token["player_id"])
+    
 
-    # When a new user connects, send them the current game state
-    with game_state:
-        await manager.send_personal_message(websocket, dict(
-            player_id=new_player.pid,
-            board=game_state.board.board
-        ))
-        await handle_players_change()
-    try:
-        while True:
-            data = await websocket.receive_text()
-            print(data)
-            # TODO: Use data from client
-    except WebSocketDisconnect:
-        with game_state:
-            game_state.remove_player(new_player.pid)
-        manager.disconnect(websocket)
+
+    

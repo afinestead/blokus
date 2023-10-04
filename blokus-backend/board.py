@@ -41,7 +41,7 @@ class Board:
     def set_board_square(self, coord: models.Coordinate, player_id: int):
         self.board[coord.y][coord.x] = player_id
     
-    async def place(
+    def place(
         self,
         piece: models.Piece,
         origin: models.Coordinate,

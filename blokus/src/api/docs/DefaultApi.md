@@ -4,18 +4,18 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**getPiecesPiecesGet**](DefaultApi.md#getPiecesPiecesGet) | **GET** /pieces | Get Pieces
+[**createNewGameGameCreatePost**](DefaultApi.md#createNewGameGameCreatePost) | **POST** /game/create | Create New Game
+[**getCurrentPlayerPlayerGet**](DefaultApi.md#getCurrentPlayerPlayerGet) | **GET** /player | Get Current Player
+[**joinGameGameGameIdJoinPost**](DefaultApi.md#joinGameGameGameIdJoinPost) | **POST** /game/{game_id}/join | Join Game
 [**placePiecePlacePut**](DefaultApi.md#placePiecePlacePut) | **PUT** /place | Place Piece
-[**rootGet**](DefaultApi.md#rootGet) | **GET** / | Root
-[**startGameStartPost**](DefaultApi.md#startGameStartPost) | **POST** /start | Start Game
 
 
 
-## getPiecesPiecesGet
+## createNewGameGameCreatePost
 
-> Object getPiecesPiecesGet(pid)
+> GameID createNewGameGameCreatePost(gameConfig)
 
-Get Pieces
+Create New Game
 
 ### Example
 
@@ -23,8 +23,8 @@ Get Pieces
 import BlokusApi from 'blokusApi';
 
 let apiInstance = new BlokusApi.DefaultApi();
-let pid = null; // Object | 
-apiInstance.getPiecesPiecesGet(pid).then((data) => {
+let gameConfig = new BlokusApi.GameConfig(); // GameConfig | 
+apiInstance.createNewGameGameCreatePost(gameConfig).then((data) => {
   console.log('API called successfully. Returned data: ' + data);
 }, (error) => {
   console.error(error);
@@ -37,11 +37,99 @@ apiInstance.getPiecesPiecesGet(pid).then((data) => {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **pid** | [**Object**](.md)|  | 
+ **gameConfig** | [**GameConfig**](GameConfig.md)|  | 
 
 ### Return type
 
-**Object**
+[**GameID**](GameID.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: application/json
+- **Accept**: application/json
+
+
+## getCurrentPlayerPlayerGet
+
+> PlayerProfile getCurrentPlayerPlayerGet(opts)
+
+Get Current Player
+
+### Example
+
+```javascript
+import BlokusApi from 'blokusApi';
+
+let apiInstance = new BlokusApi.DefaultApi();
+let opts = {
+  'tokenQuery': null, // Object | 
+  'tokenHeader': null // Object | 
+};
+apiInstance.getCurrentPlayerPlayerGet(opts).then((data) => {
+  console.log('API called successfully. Returned data: ' + data);
+}, (error) => {
+  console.error(error);
+});
+
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **tokenQuery** | [**Object**](.md)|  | [optional] 
+ **tokenHeader** | [**Object**](.md)|  | [optional] 
+
+### Return type
+
+[**PlayerProfile**](PlayerProfile.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+## joinGameGameGameIdJoinPost
+
+> AccessToken joinGameGameGameIdJoinPost(gameId)
+
+Join Game
+
+### Example
+
+```javascript
+import BlokusApi from 'blokusApi';
+
+let apiInstance = new BlokusApi.DefaultApi();
+let gameId = null; // Object | 
+apiInstance.joinGameGameGameIdJoinPost(gameId).then((data) => {
+  console.log('API called successfully. Returned data: ' + data);
+}, (error) => {
+  console.error(error);
+});
+
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **gameId** | [**Object**](.md)|  | 
+
+### Return type
+
+[**AccessToken**](AccessToken.md)
 
 ### Authorization
 
@@ -55,7 +143,7 @@ No authorization required
 
 ## placePiecePlacePut
 
-> Object placePiecePlacePut(playerId, bodyPlacePiecePlacePut)
+> Object placePiecePlacePut(bodyPlacePiecePlacePut, opts)
 
 Place Piece
 
@@ -65,9 +153,12 @@ Place Piece
 import BlokusApi from 'blokusApi';
 
 let apiInstance = new BlokusApi.DefaultApi();
-let playerId = null; // Object | 
 let bodyPlacePiecePlacePut = new BlokusApi.BodyPlacePiecePlacePut(); // BodyPlacePiecePlacePut | 
-apiInstance.placePiecePlacePut(playerId, bodyPlacePiecePlacePut).then((data) => {
+let opts = {
+  'tokenQuery': null, // Object | 
+  'tokenHeader': null // Object | 
+};
+apiInstance.placePiecePlacePut(bodyPlacePiecePlacePut, opts).then((data) => {
   console.log('API called successfully. Returned data: ' + data);
 }, (error) => {
   console.error(error);
@@ -80,8 +171,9 @@ apiInstance.placePiecePlacePut(playerId, bodyPlacePiecePlacePut).then((data) => 
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **playerId** | [**Object**](.md)|  | 
  **bodyPlacePiecePlacePut** | [**BodyPlacePiecePlacePut**](BodyPlacePiecePlacePut.md)|  | 
+ **tokenQuery** | [**Object**](.md)|  | [optional] 
+ **tokenHeader** | [**Object**](.md)|  | [optional] 
 
 ### Return type
 
@@ -94,81 +186,5 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: application/json
-- **Accept**: application/json
-
-
-## rootGet
-
-> Object rootGet()
-
-Root
-
-### Example
-
-```javascript
-import BlokusApi from 'blokusApi';
-
-let apiInstance = new BlokusApi.DefaultApi();
-apiInstance.rootGet().then((data) => {
-  console.log('API called successfully. Returned data: ' + data);
-}, (error) => {
-  console.error(error);
-});
-
-```
-
-### Parameters
-
-This endpoint does not need any parameter.
-
-### Return type
-
-**Object**
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: application/json
-
-
-## startGameStartPost
-
-> Object startGameStartPost()
-
-Start Game
-
-### Example
-
-```javascript
-import BlokusApi from 'blokusApi';
-
-let apiInstance = new BlokusApi.DefaultApi();
-apiInstance.startGameStartPost().then((data) => {
-  console.log('API called successfully. Returned data: ' + data);
-}, (error) => {
-  console.error(error);
-});
-
-```
-
-### Parameters
-
-This endpoint does not need any parameter.
-
-### Return type
-
-**Object**
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
 - **Accept**: application/json
 

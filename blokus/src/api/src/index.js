@@ -13,10 +13,15 @@
 
 
 import ApiClient from './ApiClient';
+import AccessToken from './model/AccessToken';
 import BodyPlacePiecePlacePut from './model/BodyPlacePiecePlacePut';
 import Coordinate from './model/Coordinate';
+import GameConfig from './model/GameConfig';
+import GameID from './model/GameID';
 import HTTPValidationError from './model/HTTPValidationError';
+import Message from './model/Message';
 import Piece from './model/Piece';
+import PlayerProfile from './model/PlayerProfile';
 import ValidationError from './model/ValidationError';
 import DefaultApi from './api/DefaultApi';
 
@@ -27,16 +32,31 @@ export {
     ApiClient,
 
     
+    AccessToken,
+
+    
     BodyPlacePiecePlacePut,
 
     
     Coordinate,
 
     
+    GameConfig,
+
+    
+    GameID,
+
+    
     HTTPValidationError,
 
     
+    Message,
+
+    
     Piece,
+
+    
+    PlayerProfile,
 
     
     ValidationError,

@@ -48,10 +48,30 @@
   }
 
   describe('DefaultApi', function() {
-    describe('getPiecesPiecesGet', function() {
-      it('should call getPiecesPiecesGet successfully', function(done) {
-        //uncomment below and update the code to test getPiecesPiecesGet
-        //instance.getPiecesPiecesGet(function(error) {
+    describe('createNewGameGameCreatePost', function() {
+      it('should call createNewGameGameCreatePost successfully', function(done) {
+        //uncomment below and update the code to test createNewGameGameCreatePost
+        //instance.createNewGameGameCreatePost(function(error) {
+        //  if (error) throw error;
+        //expect().to.be();
+        //});
+        done();
+      });
+    });
+    describe('getCurrentPlayerPlayerGet', function() {
+      it('should call getCurrentPlayerPlayerGet successfully', function(done) {
+        //uncomment below and update the code to test getCurrentPlayerPlayerGet
+        //instance.getCurrentPlayerPlayerGet(function(error) {
+        //  if (error) throw error;
+        //expect().to.be();
+        //});
+        done();
+      });
+    });
+    describe('joinGameGameGameIdJoinPost', function() {
+      it('should call joinGameGameGameIdJoinPost successfully', function(done) {
+        //uncomment below and update the code to test joinGameGameGameIdJoinPost
+        //instance.joinGameGameGameIdJoinPost(function(error) {
         //  if (error) throw error;
         //expect().to.be();
         //});
@@ -62,26 +82,6 @@
       it('should call placePiecePlacePut successfully', function(done) {
         //uncomment below and update the code to test placePiecePlacePut
         //instance.placePiecePlacePut(function(error) {
-        //  if (error) throw error;
-        //expect().to.be();
-        //});
-        done();
-      });
-    });
-    describe('rootGet', function() {
-      it('should call rootGet successfully', function(done) {
-        //uncomment below and update the code to test rootGet
-        //instance.rootGet(function(error) {
-        //  if (error) throw error;
-        //expect().to.be();
-        //});
-        done();
-      });
-    });
-    describe('startGameStartPost', function() {
-      it('should call startGameStartPost successfully', function(done) {
-        //uncomment below and update the code to test startGameStartPost
-        //instance.startGameStartPost(function(error) {
         //  if (error) throw error;
         //expect().to.be();
         //});

@@ -13,8 +13,13 @@
 
 
 import ApiClient from "../ApiClient";
+import AccessToken from '../model/AccessToken';
 import BodyPlacePiecePlacePut from '../model/BodyPlacePiecePlacePut';
+import GameConfig from '../model/GameConfig';
+import GameID from '../model/GameID';
 import HTTPValidationError from '../model/HTTPValidationError';
+import Message from '../model/Message';
+import PlayerProfile from '../model/PlayerProfile';
 
 
 export default class DefaultApi {
@@ -24,17 +29,80 @@ export default class DefaultApi {
         this.apiClient = apiClient || ApiClient.instance;
     }
 
-    getPiecesPiecesGetWithHttpInfo(pid) {
-      let postBody = null;
-      // verify the required parameter 'pid' is set
-      if (pid === undefined || pid === null) {
-        throw new Error("Missing the required parameter 'pid' when calling getPiecesPiecesGet");
+    createNewGameGameCreatePostWithHttpInfo(gameConfig) {
+      let postBody = gameConfig;
+      // verify the required parameter 'gameConfig' is set
+      if (gameConfig === undefined || gameConfig === null) {
+        throw new Error("Missing the required parameter 'gameConfig' when calling createNewGameGameCreatePost");
       }
 
       let pathParams = {
       };
       let queryParams = {
-        'pid': pid
+      };
+      let headerParams = {
+      };
+      let formParams = {
+      };
+
+      let authNames = [];
+      let contentTypes = ['application/json'];
+      let accepts = ['application/json'];
+      let returnType = GameID;
+      return this.apiClient.callApi(
+        '/game/create', 'POST',
+        pathParams, queryParams, headerParams, formParams, postBody,
+        authNames, contentTypes, accepts, returnType, null
+      );
+    }
+    createNewGameGameCreatePost(gameConfig) {
+      return this.createNewGameGameCreatePostWithHttpInfo(gameConfig)
+        .then(function(response_and_data) {
+          return response_and_data.data;
+        });
+    }
+    getCurrentPlayerPlayerGetWithHttpInfo(opts) {
+      opts = opts || {};
+      let postBody = null;
+
+      let pathParams = {
+      };
+      let queryParams = {
+        'token_query': opts['tokenQuery']
+      };
+      let headerParams = {
+        'token-header': opts['tokenHeader']
+      };
+      let formParams = {
+      };
+
+      let authNames = [];
+      let contentTypes = [];
+      let accepts = ['application/json'];
+      let returnType = PlayerProfile;
+      return this.apiClient.callApi(
+        '/player', 'GET',
+        pathParams, queryParams, headerParams, formParams, postBody,
+        authNames, contentTypes, accepts, returnType, null
+      );
+    }
+    getCurrentPlayerPlayerGet(opts) {
+      return this.getCurrentPlayerPlayerGetWithHttpInfo(opts)
+        .then(function(response_and_data) {
+          return response_and_data.data;
+        });
+    }
+    joinGameGameGameIdJoinPostWithHttpInfo(gameId) {
+      let postBody = null;
+      // verify the required parameter 'gameId' is set
+      if (gameId === undefined || gameId === null) {
+        throw new Error("Missing the required parameter 'gameId' when calling joinGameGameGameIdJoinPost");
+      }
+
+      let pathParams = {
+        'game_id': gameId
+      };
+      let queryParams = {
       };
       let headerParams = {
       };
@@ -44,25 +112,22 @@ export default class DefaultApi {
       let authNames = [];
       let contentTypes = [];
       let accepts = ['application/json'];
-      let returnType = Object;
+      let returnType = AccessToken;
       return this.apiClient.callApi(
-        '/pieces', 'GET',
+        '/game/{game_id}/join', 'POST',
         pathParams, queryParams, headerParams, formParams, postBody,
         authNames, contentTypes, accepts, returnType, null
       );
     }
-    getPiecesPiecesGet(pid) {
-      return this.getPiecesPiecesGetWithHttpInfo(pid)
+    joinGameGameGameIdJoinPost(gameId) {
+      return this.joinGameGameGameIdJoinPostWithHttpInfo(gameId)
         .then(function(response_and_data) {
           return response_and_data.data;
         });
     }
-    placePiecePlacePutWithHttpInfo(playerId, bodyPlacePiecePlacePut) {
+    placePiecePlacePutWithHttpInfo(bodyPlacePiecePlacePut, opts) {
+      opts = opts || {};
       let postBody = bodyPlacePiecePlacePut;
-      // verify the required parameter 'playerId' is set
-      if (playerId === undefined || playerId === null) {
-        throw new Error("Missing the required parameter 'playerId' when calling placePiecePlacePut");
-      }
       // verify the required parameter 'bodyPlacePiecePlacePut' is set
       if (bodyPlacePiecePlacePut === undefined || bodyPlacePiecePlacePut === null) {
         throw new Error("Missing the required parameter 'bodyPlacePiecePlacePut' when calling placePiecePlacePut");
@@ -71,9 +136,10 @@ export default class DefaultApi {
       let pathParams = {
       };
       let queryParams = {
-        'player_id': playerId
+        'token_query': opts['tokenQuery']
       };
       let headerParams = {
+        'token-header': opts['tokenHeader']
       };
       let formParams = {
       };
@@ -88,64 +154,8 @@ export default class DefaultApi {
         authNames, contentTypes, accepts, returnType, null
       );
     }
-    placePiecePlacePut(playerId, bodyPlacePiecePlacePut) {
-      return this.placePiecePlacePutWithHttpInfo(playerId, bodyPlacePiecePlacePut)
-        .then(function(response_and_data) {
-          return response_and_data.data;
-        });
-    }
-    rootGetWithHttpInfo() {
-      let postBody = null;
-
-      let pathParams = {
-      };
-      let queryParams = {
-      };
-      let headerParams = {
-      };
-      let formParams = {
-      };
-
-      let authNames = [];
-      let contentTypes = [];
-      let accepts = ['application/json'];
-      let returnType = Object;
-      return this.apiClient.callApi(
-        '/', 'GET',
-        pathParams, queryParams, headerParams, formParams, postBody,
-        authNames, contentTypes, accepts, returnType, null
-      );
-    }
-    rootGet() {
-      return this.rootGetWithHttpInfo()
-        .then(function(response_and_data) {
-          return response_and_data.data;
-        });
-    }
-    startGameStartPostWithHttpInfo() {
-      let postBody = null;
-
-      let pathParams = {
-      };
-      let queryParams = {
-      };
-      let headerParams = {
-      };
-      let formParams = {
-      };
-
-      let authNames = [];
-      let contentTypes = [];
-      let accepts = ['application/json'];
-      let returnType = Object;
-      return this.apiClient.callApi(
-        '/start', 'POST',
-        pathParams, queryParams, headerParams, formParams, postBody,
-        authNames, contentTypes, accepts, returnType, null
-      );
-    }
-    startGameStartPost() {
-      return this.startGameStartPostWithHttpInfo()
+    placePiecePlacePut(bodyPlacePiecePlacePut, opts) {
+      return this.placePiecePlacePutWithHttpInfo(bodyPlacePiecePlacePut, opts)
         .then(function(response_and_data) {
           return response_and_data.data;
         });

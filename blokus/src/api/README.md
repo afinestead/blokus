@@ -102,8 +102,8 @@ var BlokusApi = require('blokusApi');
 
 
 var api = new BlokusApi.DefaultApi()
-var pid = null; // {Object} 
-api.getPiecesPiecesGet(pid).then(function(data) {
+var gameConfig = new BlokusApi.GameConfig(); // {GameConfig} 
+api.createNewGameGameCreatePost(gameConfig).then(function(data) {
   console.log('API called successfully. Returned data: ' + data);
 }, function(error) {
   console.error(error);
@@ -118,18 +118,23 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
-*BlokusApi.DefaultApi* | [**getPiecesPiecesGet**](docs/DefaultApi.md#getPiecesPiecesGet) | **GET** /pieces | Get Pieces
+*BlokusApi.DefaultApi* | [**createNewGameGameCreatePost**](docs/DefaultApi.md#createNewGameGameCreatePost) | **POST** /game/create | Create New Game
+*BlokusApi.DefaultApi* | [**getCurrentPlayerPlayerGet**](docs/DefaultApi.md#getCurrentPlayerPlayerGet) | **GET** /player | Get Current Player
+*BlokusApi.DefaultApi* | [**joinGameGameGameIdJoinPost**](docs/DefaultApi.md#joinGameGameGameIdJoinPost) | **POST** /game/{game_id}/join | Join Game
 *BlokusApi.DefaultApi* | [**placePiecePlacePut**](docs/DefaultApi.md#placePiecePlacePut) | **PUT** /place | Place Piece
-*BlokusApi.DefaultApi* | [**rootGet**](docs/DefaultApi.md#rootGet) | **GET** / | Root
-*BlokusApi.DefaultApi* | [**startGameStartPost**](docs/DefaultApi.md#startGameStartPost) | **POST** /start | Start Game
 
 
 ## Documentation for Models
 
+ - [BlokusApi.AccessToken](docs/AccessToken.md)
  - [BlokusApi.BodyPlacePiecePlacePut](docs/BodyPlacePiecePlacePut.md)
  - [BlokusApi.Coordinate](docs/Coordinate.md)
+ - [BlokusApi.GameConfig](docs/GameConfig.md)
+ - [BlokusApi.GameID](docs/GameID.md)
  - [BlokusApi.HTTPValidationError](docs/HTTPValidationError.md)
+ - [BlokusApi.Message](docs/Message.md)
  - [BlokusApi.Piece](docs/Piece.md)
+ - [BlokusApi.PlayerProfile](docs/PlayerProfile.md)
  - [BlokusApi.ValidationError](docs/ValidationError.md)
 
 
