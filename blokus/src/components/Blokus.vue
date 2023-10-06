@@ -343,8 +343,8 @@ function issueBoardUpdate(piece) {
       return pt;
     }
 
-    const rotatedX = pt.y;
-    const rotatedY = boardSize.value - pt.x - 1;
+    const rotatedX = boardSize.value - pt.y- 1;
+    const rotatedY = pt.x;
 
     return translatePoint({
       x: (rotatedX + boardSize.value) % boardSize.value,
