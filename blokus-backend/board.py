@@ -36,10 +36,10 @@ class Board:
         pass
     
     def get_board_square(self, coord: models.Coordinate):
-        return self.board[coord.y][coord.x]
+        return self.board[coord.x][coord.y]
     
     def set_board_square(self, coord: models.Coordinate, player_id: int):
-        self.board[coord.y][coord.x] = player_id
+        self.board[coord.x][coord.y] = player_id
     
     def place(
         self,
@@ -54,13 +54,13 @@ class Board:
             if coord is None:
                 return None
 
-            if direction == "left":
+            if direction == "up":
                 return models.Coordinate(x=coord.x-1,y=coord.y) if coord.x > 0 else None
-            elif direction == "right":
-                return models.Coordinate(x=coord.x+1,y=coord.y) if coord.x < self.dimension - 1 else None
-            elif direction == "up":
-                return models.Coordinate(x=coord.x,y=coord.y-1) if coord.y > 0 else None
             elif direction == "down":
+                return models.Coordinate(x=coord.x+1,y=coord.y) if coord.x < self.dimension - 1 else None
+            elif direction == "left":
+                return models.Coordinate(x=coord.x,y=coord.y-1) if coord.y > 0 else None
+            elif direction == "right":
                 return models.Coordinate(x=coord.x,y=coord.y+1) if coord.y < self.dimension - 1 else None
             else:
                 return None
@@ -100,7 +100,7 @@ class Board:
             
             valid_corner = (
                 valid_corner or
-                coord == models.Coordinate(x=0,y=0) or # TODO: Translate this into player coord system
+                coord == models.Coordinate(x=0,y=0) or
                 has_valid_corner(abs_coord)
             )
 
@@ -111,3 +111,5 @@ class Board:
         for coord in piece.shape:
             abs_coord = models.Coordinate(x=origin.x+coord.x, y=origin.y+coord.y)
             self.set_board_square(abs_coord, player_id)
+        
+        print(self)

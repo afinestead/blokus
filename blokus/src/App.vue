@@ -11,13 +11,9 @@ const { cookies } = useCookies();
 const router = useRouter();
 
 onBeforeMount(() => {
-  console.log(router);
-
   if (!cookies.get("game_id")) {
-    console.log("pusing to lobby");
     router.push({ path: "/lobby" });
   } else {
-    console.log("pusing to game");
     router.push({ path: "/play" });
   }
 });

@@ -107,13 +107,17 @@ async def join_game(game_id: str):
 async def get_current_player(
     token: Annotated[models.AccessToken, Depends(verify_player_token)],
 ):
-    print(token)
+    print("getting player")
     try:
         game_state = game_server.get_game(token["game_id"])
+        print("got state")
     except KeyError:
         return HTTPException(status_code=404, detail="Unknown game")
+    print("with...")
     with game_state:
+        print("k")
         player = game_state.get_player_by_id(token["player_id"])
+        print(player)
 
     return models.PlayerProfile(
         player_id=player.pid,
@@ -152,10 +156,13 @@ async def game(
     token: Annotated[models.AccessToken, Depends(verify_player_token)],
 ):
     try:
+        print("getting game")
         game_state = game_server.get_game(token["game_id"])
+        print("got it")
     except KeyError:
         return WebSocketException(code=FastAPIStatus.WS_1008_POLICY_VIOLATION)
     
+    print("connecting")
     await game_state.connect_player(websocket, pid=token["player_id"])
     
 

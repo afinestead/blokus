@@ -58,16 +58,20 @@ class GameManager:
     ]))
 
     async def connect_player(self, websocket: WebSocket, pid: int):
+        print("calling connect")
         await self._socket_manager.connect(websocket)
-
+        print("ok")
         # When a new user connects, send them the current game state
+        print("locing")
         with self.lock:
+            print("locked")
             await self._socket_manager.send_personal_message(websocket, dict(
                 board=self.board.board,
                 player_id=pid,
             ))
             # Also alert everyone else of a new change to the online players
             await self.broadcast_players_change()
+        print("done with lock")
         try:
             while True:
                 data = await websocket.receive_text()

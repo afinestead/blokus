@@ -15,7 +15,7 @@ const store = createStore({
         },
         joinGame({state, commit}, gameId) {
             return state.api.joinGameGameGameIdJoinPost(gameId)
-                .then(r => { console.log(r); commit("setToken", r.access_token)});
+                .then(r => commit("setToken", r.access_token));
         },
         getGameWebSocket({state}) {
             return new WebSocket(`ws://${state.apiLocation}/ws?token_query=${state.token}`);

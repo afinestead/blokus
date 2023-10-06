@@ -8,119 +8,118 @@
         blockStyle,
         {
           backgroundColor: color,
-          left: `${block[0]*squareSize}px`,
-          top: `${block[1]*squareSize}px`
+          top: `${block[0]*squareSize}px`,
+          left: `${block[1]*squareSize}px`,
         }
       ]"
       @click.stop="handlePieceClick"
-      @mousedown.right="flipPiece"
+      @mousedown.right="handlePieceClick"
       @contextmenu.prevent
     />
   </div>
 </template>
 
-<script>
-export default {
-  name: 'Piece',
-  props: {
-    squareSize: {
-      type: Number,
-    },
-    blocks: {
-      type: Array,
-      default: () => [],
-    },
-    color: {
-      type: String,
-      default: ""
-    },
-  },
-  data() {
-    return {
-      blocksInternal: [],
-      clicks: 0,
-      clickTimer: null,
-      dblClickDelay: 200,
-      pieceLen: 0,
-      ss: 20,
-      pieceStyle: {},
-      blockStyle: {},
-    }
-  },
-  mounted: function() {
-    this.blocksInternal = this.blocks;
-    
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (const [x, y] of this.blocks) {
-      maxX = Math.max(maxX, x);
-      maxY = Math.max(maxY, y);
-    }
-    
-    this.pieceLen = [maxX + 1, maxY + 1];
+<script setup>
 
-    this.pieceStyle = {
-      height: `${this.pieceLen[1]*this.squareSize}px`,
-      width: `${this.pieceLen[0]*this.squareSize}px`,
-    }
-    this.blockStyle = {
-      height: `${this.squareSize-1}px`,
-      width: `${this.squareSize-1}px`,
-    }
+import { computed, defineEmits, defineExpose, defineProps, ref, onMounted, watch } from 'vue';
+
+const props = defineProps({
+  squareSize: {
+    type: Number,
+    default: 0,
   },
-  watch: {
-    blocks(newBlocks) {
-      this.blocksInternal = newBlocks
-    }
+  blocks: {
+    type: Array,
+    default: () => [],
   },
-  methods: {
-    handlePieceClick(evt) {
-      this.clicks++;
-      if (this.clicks === 1) {
-        this.clickTimer = setTimeout(() => {
-          this.$emit("click", evt)
-          this.clicks = 0;
-        }, this.dblClickDelay);
-      } else {
-        // Double click
-        this.rotatePiece(90);
-        clearTimeout(this.clickTimer);
-        this.$emit("change")
-        this.clicks = 0;
-      }
-    },
-    translatePiece(blocks) {
-      let minX = Infinity;
-      let minY = Infinity;
-      for (const [x, y] of blocks) {
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-      }
-      return blocks.map(([x,y]) => [x-minX,y-minY]);
-    },
-    flipPiece() {
-      const p = this.blocksInternal.map(([x,y]) => [-x,y]);
-      this.blocksInternal = this.translatePiece(p);
-      this.$emit("change")
-    },
-    rotatePiece(deg) {
-      const rad = deg * Math.PI / 180;
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
-      let p = this.blocksInternal.map(([x,y]) => [Math.round(x*cos - y*sin), Math.round(x*sin + y*cos)]);
-      this.blocksInternal = this.translatePiece(p);
-      this.$emit("change")
-    },
+  color: {
+    type: String,
+    default: ""
   },
-  computed: {
-    cssProps() {
-      return {
-        "--square-size": `${this.squareSize}px`,
-        "--piece-width": `${this.pieceLen[0]*this.squareSize}px`,
-        "--piece-height": `${this.pieceLen[1]*this.squareSize}px`,
-      }
+});
+
+const emit = defineEmits(["click", "change"]);
+
+const blocksInternal = ref([]);
+const clicks = ref(0);
+const clickTimer = ref(null);
+const dblClickDelay = 200;
+
+const pieceLen = computed(() => {
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const [x, y] of blocksInternal.value) {
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
+  return [maxX + 1, maxY + 1];
+});
+
+const pieceStyle = computed(() => ({
+  height: `${pieceLen.value[0]*props.squareSize}px`,
+  width: `${pieceLen.value[1]*props.squareSize}px`,
+}));
+
+const blockStyle = computed(() => ({
+  height: `${props.squareSize-1}px`,
+  width: `${props.squareSize-1}px`,
+}));
+
+defineExpose({
+  handlePieceClick,
+  blocksInternal,
+});
+
+onMounted(() => {
+  blocksInternal.value = props.blocks;
+});
+
+watch(() => props.blocks, (newBlocks) => blocksInternal.value = newBlocks);
+
+function handlePieceClick(evt) {
+  if (evt.button === 2) {
+    flipPiece();
+  } else {
+    clicks.value++;
+    if (clicks.value === 1) {
+      clickTimer.value = setTimeout(() => {
+        emit("click", evt);
+        clicks.value = 0;
+      }, dblClickDelay);
+    } else {
+      // Double click
+      rotatePiece(90);
+      clearTimeout(clickTimer.value);
+      emit("change");
+      clicks.value = 0;
     }
   }
+}
+
+function translatePiece(blocks) {
+  let minX = Infinity;
+  let minY = Infinity;
+  for (const [x, y] of blocks) {
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+  }
+  return blocks.map(([x,y]) => [x-minX,y-minY]);
+}
+
+function flipPiece(event) {
+  const p = blocksInternal.value.map(([x,y]) => [-x,y]);
+  blocksInternal.value = translatePiece(p);
+  emit("change");
+}
+
+
+function rotatePiece(deg) {
+  const rad = deg * Math.PI / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const p = blocksInternal.value.map(([x,y]) => [Math.round(x*cos - y*sin), Math.round(x*sin + y*cos)]);
+  blocksInternal.value = translatePiece(p);
+  emit("change");
 }
 </script>
 

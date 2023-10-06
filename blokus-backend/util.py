@@ -13,10 +13,10 @@ def is_unique(piece: Piece, unique: Set[Piece]):
     return True
 
 def _generate(pieces: Set[Piece]) -> Set[Piece]:
-    gen_left  = lambda p: (p[0]-1,p[1])
-    gen_right = lambda p: (p[0]+1,p[1])
-    gen_down  = lambda p: (p[0],p[1]-1)
-    gen_up    = lambda p: (p[0],p[1]+1)
+    gen_up  = lambda p: (p[0]-1,p[1])
+    gen_down = lambda p: (p[0]+1,p[1])
+    gen_left  = lambda p: (p[0],p[1]-1)
+    gen_right    = lambda p: (p[0],p[1]+1)
 
     new_pieces: Set[Piece] = set()
 

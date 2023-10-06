@@ -39,14 +39,12 @@ const gameId = ref("");
 const joining = ref(false);
 const errorMessage = ref("");
 
-console.log(store);
-
 onBeforeMount(() => {
   const token = store.state.token;
   if (token) {
     store.dispatch("getCurrentPlayer")
       .then(() => router.push({ path: "/play" }))
-      .catch(); // Do nothing on failure- probably a stale token
+      .catch(e => {}); // Do nothing on failure- probably a stale token
   }
 });
 

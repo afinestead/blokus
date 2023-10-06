@@ -12,30 +12,16 @@
           :color="playerColors[player.player_id]"
         />
       </div>
-      <div
-        v-if="board !== null"
-        ref="boardRef"
-        class="board"
-        :style="{
-          width: `${(boardSize*squareSize)}px`,
-          height: `${(boardSize*squareSize)}px`
-        }"
-      >
-        <div
-          v-for="pid, idx in flatBoard"
-          :key="idx"
-          class="board-square"
-          :class="[
-            pid !== null ? 'occupied' : '',
-            pid !== null ? `player-${pid}` : ''
-          ]"
-          :style="{
-            left: `${(idx%boardSize)*squareSize}px`,
-            top: `${Math.floor(idx/boardSize)*squareSize}px`,
-            backgroundColor: playerColors[pid],
-          }"
-        />
-  
+      <div v-if="translatedBoard" ref="boardRef" class="board">
+        <div v-for="row, i in translatedBoard" :key="i" class="board-row">
+          <board-square
+            v-for="pid, j in row"
+            :key="j"
+            :owner="pid"
+            :colors="playerColors"
+            @mouseover="calculateOverlap(i, j)"
+          />
+        </div>
       </div>
       
       <div class="my-pieces" :style="{height: `${boardSize*squareSize}px`}">
@@ -52,15 +38,15 @@
         />
       </div>
     </div>
-  
+
     <piece
       class="selected-piece"
       ref="selectedPieceRef"
       :color="playerColors[playerID]"
-      :blocks="selectedPiece === null ? [] : selectedPiece.block"
-      :square-size="squareSize"
+      :blocks="selectedPiece?.block || []"
+      :squareSize="squareSize"
       :style="{
-        display: selectedPiece === null ? 'none' : 'block',
+        display: selectedPiece === null ? 'none' : 'inline-block',
         top: `${cursorY + offsetY - (squareSize / 2)}px`,
         left: `${cursorX + offsetX - (squareSize / 2)}px`,
       }"
@@ -69,19 +55,19 @@
       @change="nextTick(() => snapPieceToCursor())"
     />
   
-    <div class="my-info">
-      Testing!
-    </div>
-  
   </template>
   
 <script setup>
 import { nextTick, onMounted, ref, reactive, computed, watch } from 'vue'
+import BoardSquare from './BoardSquare.vue';
 import Piece from './Piece.vue'
 import PlayerCard from './PlayerCard.vue'
+import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 
+
 const store = useStore();
+const router = useRouter()
 const squareSize = 21;
 
 const board = ref([]);
@@ -90,38 +76,122 @@ const boardRef = ref(null)
 const myPieces = ref([]);
 const allPlayers = ref([]);
 const playerID = ref(null);
-const playerColors = computed(() => allPlayers.value?.reduce((acc, p) => ({...acc, [p.player_id]: p.color ? `#${p.color.toString(16)}` : "#ffffff"}), {}));
+const playerColors = computed(() => allPlayers.value?.reduce((acc, p) => ({...acc, [p.player_id]: p.color ? `#${p.color.toString(16).padStart(6, '0')}` : "#ffffff"}), {}));
 const playerNames = computed(() => allPlayers.value?.reduce((acc, p) => ({...acc, [p.player_id]: p.name}), {}));
 const selectedPiece = ref(null);
 const selectedPieceRef = ref(null);
+const selectedPieceOverlap = ref(null);
 const cursorX = ref(null);
 const offsetX = ref(null);
 const cursorY = ref(null);
 const offsetY = ref(null);
 const ws = ref(null);
 
-const translatedBoard = computed(() => {
-  console.log(board.value, playerID.value);
-  return translateBoard(board.value, playerID.value)
-});
-const flatBoard = computed(() => translatedBoard.value?.flat())
+const translatedBoard = computed(() => translateBoard(board.value, playerID.value));
+const boardHTML = ref([]);
+
+function calculateOverlap(i, j) {
+  if (selectedPiece.value) {
+
+    console.log(selectedPieceRef.value.blocksInternal);
+
+    const OccupiedByMe = ([x,y]) => translatedBoard.value[x][y] === playerID.value;
+
+    const nullCoords = [null,null];
+
+    const GetNeighborCoords = (dir, [x, y]) => {
+      if (x === null || y === null) {
+        return nullCoords;
+      }
+      switch (dir) {
+        case "up": return x > 0 ? [x-1,y] : nullCoords;
+        case "down": return x < boardSize.value-1 ? [x+1,y] : nullCoords;
+        case "left": return y > 0 ? [x,y-1] : nullCoords;
+        case "right": return y < boardSize.value-1 ? [x,y+1] : nullCoords;
+        default: return nullCoords;
+      }
+    }
+
+    const GetOverlapCoords = () => {
+      let validOverlap = [];
+      for (const [x,y] of selectedPieceRef.value.blocksInternal) {
+        const overlapX = i + x - selectedPiece.value.origin[0];
+        const overlapY = j + y - selectedPiece.value.origin[1];
+
+        if (
+          overlapX >= 0 && overlapX < boardSize.value &&
+          overlapY >= 0 && overlapY < boardSize.value
+        ) {
+          validOverlap.push([overlapX, overlapY]);
+        } else {
+          return null;
+        }
+      }
+      return validOverlap;
+    }
+
+    const HasSideNeighbor = coords => {
+      if (coords == nullCoords) {
+        return false;
+      }
+      const leftCoords = GetNeighborCoords("left", coords);
+      const rightCoords = GetNeighborCoords("right", coords);
+      const downCoords = GetNeighborCoords("down", coords);
+      const upCoords = GetNeighborCoords("up", coords);
+
+      return (
+        (leftCoords !== nullCoords && OccupiedByMe(leftCoords)) ||
+        (rightCoords !== nullCoords && OccupiedByMe(rightCoords)) ||
+        (downCoords !== nullCoords && OccupiedByMe(downCoords)) ||
+        (upCoords !== nullCoords && OccupiedByMe(upCoords))
+      );
+    }
+
+
+    const HasCornerNeighbor = coords => {
+      if (coords == nullCoords) {
+        return false;
+      }
+      const leftUpCoords = GetNeighborCoords("left", GetNeighborCoords("up", coords));
+      const leftDownCoords = GetNeighborCoords("left", GetNeighborCoords("down", coords));
+      const rightUpCoords = GetNeighborCoords("right", GetNeighborCoords("up", coords));
+      const rightDownCoords = GetNeighborCoords("right", GetNeighborCoords("down", coords));
+
+      return (
+        (leftUpCoords !== nullCoords && OccupiedByMe(leftUpCoords)) ||
+        (leftDownCoords !== nullCoords && OccupiedByMe(leftDownCoords)) ||
+        (rightUpCoords !== nullCoords && OccupiedByMe(rightUpCoords)) ||
+        (rightDownCoords !== nullCoords && OccupiedByMe(rightDownCoords))
+      );
+    }
+
+
+    const overlapCoords = GetOverlapCoords();
+    // TODO: be smarter about recomputing css
+    clearHighlight();
+
+    console.log(overlapCoords);
+    if (
+      overlapCoords !== null &&
+      overlapCoords.every(coords => !HasSideNeighbor(coords)) &&
+      overlapCoords.some(coords => HasCornerNeighbor(coords) || (coords[0] === 0 && coords[1] === 0))
+    ) {
+      // This is a valid placement
+      overlapCoords.forEach(([x,y]) => {
+        const sq = boardHTML.value[x][y];
+        sq.classList.add("highlighted");
+      });
+      selectedPieceOverlap.value = overlapCoords;
+      return;
+    }
+  }
+  selectedPieceOverlap.value = null;
+}
 
 onMounted(() => {
   document.onmousemove = (event) => {
     cursorX.value = event.pageX;
     cursorY.value = event.pageY;
-
-    if (selectedPiece.value) {
-      // find square where cursor is hovering
-      const boardSqs = boardRef.value.children;
-      const overlap = computePieceOverlap();
-      clearHighlight();
-      if (overlap) {
-        overlap.forEach(overlapIdx => {
-          boardSqs[overlapIdx].classList.add("highlighted");
-        });
-      }
-    }
   };
 
   document.onkeydown = (event) => {
@@ -132,14 +202,23 @@ onMounted(() => {
     }
   };
 
+  document.onclick = (event) => {
+    if (selectedPiece.value) {
+      selectedPieceRef.value.handlePieceClick(event);
+    }
+  };
+
+  document.oncontextmenu = (event) => {
+    if (selectedPiece.value) {
+      selectedPieceRef.value.handlePieceClick(event);
+    }
+    return false;
+  }
   
-
   store.dispatch("getCurrentPlayer")
-    .then(r => myPieces.value = r.pieces.map(p => p.shape.map(b => [b.x, b.y])));
-
-  store.dispatch("getGameWebSocket")
-    .then(new_ws => {
-      console.log(new_ws);
+    .then(r => myPieces.value = r.pieces.map(p => p.shape.map(b => [b.x, b.y])))
+    .then(() => store.dispatch("getGameWebSocket"))
+    .then((new_ws) => {
       new_ws.onmessage = (e) => {
         const msg = JSON.parse(e.data);
         console.log(msg);
@@ -157,14 +236,9 @@ onMounted(() => {
       }
       ws.value = new_ws;
     })
-});
+    .catch(() => router.push("/lobby"));
 
-function idxToXY(idx) {
-  return {
-    x: idx % boardSize.value,
-    y: Math.floor(idx / boardSize.value),
-  }
-};
+});
 
 function snapPieceToCursor() {
   // debugger; // eslint-disable-line
@@ -174,24 +248,32 @@ function snapPieceToCursor() {
   const blocks = selectedPieceRef.value.$el.children;
   for (const block of blocks) {
     const rect = block.getBoundingClientRect();
-    if (rect.left < x) {
-      x = rect.left;
+    if (rect.top < x) {
+      x = rect.top;
     }
   }
+
+  let snappedToBlock;
 
   for (const block of blocks) {
     const rect = block.getBoundingClientRect();
-    if (rect.left === x && rect.top <= y) {
-      y = rect.top;
+    if (rect.top === x && rect.left <= y) {
+      y = rect.left;
+      snappedToBlock = block;
     }
   }
   const rect = selectedPieceRef.value.$el.getBoundingClientRect();
-  offsetX.value = rect.left - x;
-  offsetY.value = rect.top - y;
+  offsetY.value = rect.top - x;
+  offsetX.value = rect.left - y;
+
+  // Find the coordinate of where we snapped to
+  selectedPiece.value.origin = [
+    Math.floor(parseInt(snappedToBlock.style.top) / squareSize),
+    Math.floor(parseInt(snappedToBlock.style.left) / squareSize),
+  ];
 };
 
 async function pickupPiece(evt, piece, idx) {
-  // this.myPieces.splice(idx, 1);
   const block = evt.target.parentElement;
   if (!block.classList.contains("piece")) {
     return;
@@ -204,8 +286,7 @@ async function pickupPiece(evt, piece, idx) {
   };
   block.classList.add("hidden");
   
-  await nextTick();
-  snapPieceToCursor();
+  await nextTick(() => snapPieceToCursor());
 };
 
 function dropPiece(discard) {
@@ -220,18 +301,10 @@ function dropPiece(discard) {
 
 function placePiece() {
   if (isMyTurn()) {
-    const placement = computePieceOverlap();
-    if (placement.length) {
-      const boardSqs = boardRef.value.children;
-      placement.forEach(placementIdx => {
-        const sq = boardSqs[placementIdx];
-        sq.style.backgroundColor = playerColors[playerID.value];
-        sq.classList.add("occupied");
-        sq.classList.add(`player-${playerID.value}`);
-      });
-      issueBoardUpdate(placement)
+    if (selectedPieceOverlap.value !== null) {
+      issueBoardUpdate(selectedPieceOverlap.value)
         .then(() => dropPiece(false))
-        .catch(console.log);
+        .catch(() => {});
     }
   }
 };
@@ -244,88 +317,8 @@ function handlePieceClick(evt, piece, idx) {
   }
 };
 
-function clearHighlight() {
-  for (const bsq of boardRef.value.children) {
-    bsq.classList.remove("highlighted");
-  }
-};
-
-function computePieceOverlap() {
-  const boardRect = boardRef.value.getBoundingClientRect();
-  const boardSqs = boardRef.value.children;
-
-  const pieces = selectedPieceRef.value.$el.children;
-  let pieceCenters = [];
-  for (const psq of pieces) {
-    const pRect = psq.getBoundingClientRect();
-    pieceCenters.push([pRect.left + (squareSize / 2), pRect.top + (squareSize / 2)]);
-  }
-
-  const OccupiedByMe = (idx) => boardSqs[idx].classList.contains(`player-${playerID.value}`);
-
-  const GetNeighborIdx = (sqIdx, dir) => {
-    if (sqIdx === null) {
-      return null;
-    }
-    switch(dir) {
-      case "left": return sqIdx % boardSize.value > 0 ? sqIdx - 1 : null;
-      case "right": return sqIdx % boardSize.value < (boardSize.value - 1) ? sqIdx + 1 : null;
-      case "up": return sqIdx - boardSize.value > 0 ? sqIdx - boardSize.value : null;
-      case "down": return sqIdx + boardSize.value < boardSize.value**2 ? sqIdx + boardSize.value : null;
-      default: return null;
-    }
-  }
-
-  const HasSideNeighbor = (sqIdx) => {
-    const leftIdx = GetNeighborIdx(sqIdx, "left");
-    const rightIdx = GetNeighborIdx(sqIdx, "right");
-    const upIdx = GetNeighborIdx(sqIdx, "up");
-    const downIdx = GetNeighborIdx(sqIdx, "down");
-    return (
-      (leftIdx !== null && OccupiedByMe(leftIdx))
-      || (rightIdx !== null && OccupiedByMe(rightIdx))
-      || (upIdx !== null && OccupiedByMe(upIdx))
-      || (downIdx !== null && OccupiedByMe(downIdx))
-    );
-  }
-
-  const HasCornerNeighbor = (sqIdx) => {
-    const upLeftIdx = GetNeighborIdx(GetNeighborIdx(sqIdx, "left"), "up");
-    const upRightIdx = GetNeighborIdx(GetNeighborIdx(sqIdx, "right"), "up");
-    const downLeftIdx = GetNeighborIdx(GetNeighborIdx(sqIdx, "left"), "down");
-    const downRightIdx = GetNeighborIdx(GetNeighborIdx(sqIdx, "right"), "down");
-    return (
-      (upLeftIdx !== null && OccupiedByMe(upLeftIdx))
-      || (upRightIdx !== null && OccupiedByMe(upRightIdx))
-      || (downLeftIdx !== null && OccupiedByMe(downLeftIdx))
-      || (downRightIdx !== null && OccupiedByMe(downRightIdx))
-    );
-  }
-
-  let intersection = []
-  pieceCenters.forEach(psq => {
-    const sqOffsetX = Math.floor((psq[0] - boardRect.left) / squareSize);
-    const sqOffsetY = Math.floor((psq[1] - boardRect.top) / squareSize);
-    if (
-      sqOffsetX >= 0 && sqOffsetX < boardSize.value &&
-      sqOffsetY >= 0 && sqOffsetY < boardSize.value
-    ) {
-      const asIdx = sqOffsetX + (sqOffsetY * boardSize.value);
-      intersection.push(asIdx);
-    }
-  });
-
-  let validCorner = false;
-  for (const sq of intersection) {
-    if (boardSqs[sq].classList.contains("occupied") || HasSideNeighbor(sq)) {
-      return [];
-    }
-    validCorner = validCorner || HasCornerNeighbor(sq) || sq === 0;
-  }
-  if (validCorner && intersection.length === pieceCenters.length) {
-    return intersection;
-  }
-  return [];
+function clearHighlight(x,y) {
+  document.querySelectorAll(".board-square").forEach(sq => sq.classList.remove("highlighted"));
 };
 
 function isMyTurn() {
@@ -345,7 +338,6 @@ function translateBoard(matrix, n) {
 };
 
 function issueBoardUpdate(piece) {
-
   const translatePoint = (pt, n) => {
     if (n === 1) {
       return pt;
@@ -360,26 +352,18 @@ function issueBoardUpdate(piece) {
     }, n - 1);
   };
 
-  const pieceXY = piece.map(tile => ({x: idxToXY(tile).x, y: idxToXY(tile).y}));
-  const translatedPiece = pieceXY.map(tile => translatePoint(tile, playerID.value));
+  const translatedPiece = piece.map(([x,y]) => translatePoint({x, y}, playerID.value));
   const origin = translatedPiece[0];
 
   const shape = translatedPiece.map(tile => ({
     x: tile.x - origin.x,
-    y: tile.y - origin.y
+    y: tile.y - origin.y,
   }));
 
+  console.log(shape, origin);
+  
+  // return Promise.resolve()
   return store.dispatch("placePiece", {piece: {shape: shape}, origin: origin});
-
-  // return api.placePiecePlacePut(
-  //   playerID.value,
-  //   {
-  //     "piece": {
-  //       "shape": shape
-  //     },
-  //     "origin": origin
-  //   }
-  // );
 };
 
 watch(selectedPiece, (newPiece) => {
@@ -388,9 +372,13 @@ watch(selectedPiece, (newPiece) => {
   }
 });
 
+watch(translatedBoard, () => {
+  nextTick(() => boardHTML.value = Array.from(boardRef.value?.children || []).map(htmlCol => Array.from(htmlCol?.children)));
+})
+
 </script>
 
-<style>
+<style scoped>
 .gameplay-area {
   display: block;
 }
@@ -407,13 +395,8 @@ watch(selectedPiece, (newPiece) => {
   float: left;
 }
 
-.board-square {
-  position: absolute;
-  box-sizing: border-box;
-  border: 1px solid black;
-  margin: 1px;
-  height: 20px;
-  width: 20px;
+.board-row {
+  display: flex;
 }
 
 .active-players {
@@ -446,6 +429,7 @@ watch(selectedPiece, (newPiece) => {
 
 .selected-piece {
   position: absolute;
+  pointer-events: none;
 }
 
 .hidden {
