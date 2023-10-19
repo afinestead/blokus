@@ -1,11 +1,12 @@
 from collections import deque
+from enum import Enum
 import itertools
 from fastapi import WebSocket, WebSocketDisconnect
 import random
 import string
 from threading import Lock
 import util
-from typing import Dict, Set
+from typing import Any, Dict, Optional, Set
 
 from board import Board
 from piece import Piece
@@ -27,12 +28,15 @@ class GameManager:
 
         self._block_deg: int = block_degree
 
+        # TODO: Global piece cache?
         self._all_pieces: Set[Piece] = util.generate_pieces(self._block_deg)
 
         self._unique_pid: Set[int] = set(range(1, players+1))
         self._taken_pid: Set[int] = set()
         self.players: Dict[int, PlayerProfile] = {}
         self._turn_iter = deque()
+
+        self._status = models.GameStatus.WAITING
 
         self._board = Board(board_size)
 
@@ -48,56 +52,91 @@ class GameManager:
     def __exit__(self, *_exc):
         pass
 
+    async def handle_player_update(
+        self,
+        pid: int,
+        color: Optional[int] = None,
+        name: Optional[str] = None,
+    ):
+        player = self.players[pid]
+        # TODO: validate input
+        player.color = color or player.color
+        player.name = name or player.name
+        await self.broadcast_players_change()
+
+
     async def broadcast_players_change(self):
         await self._socket_manager.broadcast(dict(players=[
-        dict(
-            player_id=p.pid,
-            color=p.color,
-            name=p.name,
-        ) for p in self.players.values()
-    ]))
+            dict(
+                player_id=p.pid,
+                color=p.color,
+                name=p.name,
+            ) for p in self.players.values()
+        ]))
 
     async def connect_player(self, websocket: WebSocket, pid: int):
-        print("calling connect")
         await self._socket_manager.connect(websocket)
-        print("ok")
         # When a new user connects, send them the current game state
-        print("locing")
         with self.lock:
-            print("locked")
             await self._socket_manager.send_personal_message(websocket, dict(
                 board=self.board.board,
                 player_id=pid,
+                turn=self.whose_turn,
             ))
             # Also alert everyone else of a new change to the online players
             await self.broadcast_players_change()
-        print("done with lock")
+            await self._socket_manager.broadcast(dict(status=self._status.value))
         try:
             while True:
-                data = await websocket.receive_text()
+                data: Dict[str, Any] = await websocket.receive_json()
                 print(data)
-                # TODO: Use data from client
+
+                if "update" in data:
+                    with self.lock:
+                        await self.handle_player_update(
+                            pid=pid,
+                            color=data["update"].get("color"),
+                            name=data["update"].get("name"),
+                        )
+                if "chat" in data:
+                    await self._socket_manager.broadcast(dict(chat=dict(
+                        pid=pid,
+                        msg=data["chat"],
+                    )))
+
         except WebSocketDisconnect:
             self._socket_manager.disconnect(websocket)
 
     @property
-    def whose_turn(self):
+    def whose_turn(self) -> int:
         return self._turn_iter[0]
 
     @property
     def board(self):
         return self._board
 
-    def next_turn(self):
+    @property
+    def status(self):
+        return self._status
+
+    async def next_turn(self):
         self._turn_iter.rotate(-1)
+        await self._socket_manager.broadcast(dict(turn=self.whose_turn))
     
     async def place_piece(
         self,
         piece: models.Piece,
         origin: models.Coordinate,
-        player_id: int
+        pid: int
     ):
-        self.board.place(piece, origin, player_id)
+        piece_internal = Piece({(tile.x, tile.y) for tile in piece.shape}).translate()
+        player = self.players[pid]
+        if piece_internal not in player.pieces:
+            raise GameManager.InvalidGameState("Invalid piece")
+        
+        self.board.place(piece, origin, pid)
+        player.pieces.remove(piece_internal)
+        
         await self._socket_manager.broadcast(dict(board=self.board.board))
     
     def get_player_by_id(self, pid: int):
@@ -125,6 +164,10 @@ class GameManager:
 
                 self._turn_iter.append(pid)
                 self.players[pid] = player
+                
+                # TODO: Find a better place to track game state
+                if not self._unique_pid:
+                    self._status = models.GameStatus.ACTIVE
 
                 return player
             else:
@@ -144,7 +187,6 @@ class GameServer:
         self.active_games: Dict[models.GameID, GameManager] = {}
 
     def create_game(self, config: models.GameConfig) -> models.GameID:
-        print(config)
         game_state = GameManager(
             players=config.players,
             block_degree=config.block_size,

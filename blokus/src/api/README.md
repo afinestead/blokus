@@ -119,9 +119,11 @@ All URIs are relative to *http://localhost*
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
 *BlokusApi.DefaultApi* | [**createNewGameGameCreatePost**](docs/DefaultApi.md#createNewGameGameCreatePost) | **POST** /game/create | Create New Game
+*BlokusApi.DefaultApi* | [**gameStateStateGet**](docs/DefaultApi.md#gameStateStateGet) | **GET** /state | Game State
 *BlokusApi.DefaultApi* | [**getCurrentPlayerPlayerGet**](docs/DefaultApi.md#getCurrentPlayerPlayerGet) | **GET** /player | Get Current Player
 *BlokusApi.DefaultApi* | [**joinGameGameGameIdJoinPost**](docs/DefaultApi.md#joinGameGameGameIdJoinPost) | **POST** /game/{game_id}/join | Join Game
 *BlokusApi.DefaultApi* | [**placePiecePlacePut**](docs/DefaultApi.md#placePiecePlacePut) | **PUT** /place | Place Piece
+*BlokusApi.DefaultApi* | [**whoseTurnTurnGet**](docs/DefaultApi.md#whoseTurnTurnGet) | **GET** /turn | Whose Turn
 
 
 ## Documentation for Models
@@ -131,6 +133,7 @@ Class | Method | HTTP request | Description
  - [BlokusApi.Coordinate](docs/Coordinate.md)
  - [BlokusApi.GameConfig](docs/GameConfig.md)
  - [BlokusApi.GameID](docs/GameID.md)
+ - [BlokusApi.GameState](docs/GameState.md)
  - [BlokusApi.HTTPValidationError](docs/HTTPValidationError.md)
  - [BlokusApi.Message](docs/Message.md)
  - [BlokusApi.Piece](docs/Piece.md)

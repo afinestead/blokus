@@ -4,18 +4,13 @@
 
 <script setup>
 import { onBeforeMount } from "vue";
-import { useCookies } from "vue3-cookies";
 import { useRouter } from 'vue-router';
+import { useStore } from 'vuex';
 
-const { cookies } = useCookies();
 const router = useRouter();
 
 onBeforeMount(() => {
-  if (!cookies.get("game_id")) {
-    router.push({ path: "/lobby" });
-  } else {
-    router.push({ path: "/play" });
-  }
+  router.push({ path: "/join" });
 });
 
 </script>

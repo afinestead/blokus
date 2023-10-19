@@ -58,6 +58,16 @@
         done();
       });
     });
+    describe('gameStateStateGet', function() {
+      it('should call gameStateStateGet successfully', function(done) {
+        //uncomment below and update the code to test gameStateStateGet
+        //instance.gameStateStateGet(function(error) {
+        //  if (error) throw error;
+        //expect().to.be();
+        //});
+        done();
+      });
+    });
     describe('getCurrentPlayerPlayerGet', function() {
       it('should call getCurrentPlayerPlayerGet successfully', function(done) {
         //uncomment below and update the code to test getCurrentPlayerPlayerGet
@@ -82,6 +92,16 @@
       it('should call placePiecePlacePut successfully', function(done) {
         //uncomment below and update the code to test placePiecePlacePut
         //instance.placePiecePlacePut(function(error) {
+        //  if (error) throw error;
+        //expect().to.be();
+        //});
+        done();
+      });
+    });
+    describe('whoseTurnTurnGet', function() {
+      it('should call whoseTurnTurnGet successfully', function(done) {
+        //uncomment below and update the code to test whoseTurnTurnGet
+        //instance.whoseTurnTurnGet(function(error) {
         //  if (error) throw error;
         //expect().to.be();
         //});

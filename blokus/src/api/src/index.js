@@ -18,6 +18,7 @@ import BodyPlacePiecePlacePut from './model/BodyPlacePiecePlacePut';
 import Coordinate from './model/Coordinate';
 import GameConfig from './model/GameConfig';
 import GameID from './model/GameID';
+import GameState from './model/GameState';
 import HTTPValidationError from './model/HTTPValidationError';
 import Message from './model/Message';
 import Piece from './model/Piece';
@@ -45,6 +46,9 @@ export {
 
     
     GameID,
+
+    
+    GameState,
 
     
     HTTPValidationError,

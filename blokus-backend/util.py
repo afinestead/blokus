@@ -39,6 +39,10 @@ def generate_pieces(degree) -> Set[Piece]:
         print(f"{len(new_pieces)} blocks generated, {len(pieces)} blocks total")
     return pieces
 
+def generate_board(n_players, piece_degree):
+    lateral_len = piece_degree * 4
+    pass
+
 def show_piece(piece):
     # fig = plt.figure()
     # plt.xlim(0, degree)

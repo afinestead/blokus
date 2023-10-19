@@ -17,6 +17,7 @@ import AccessToken from '../model/AccessToken';
 import BodyPlacePiecePlacePut from '../model/BodyPlacePiecePlacePut';
 import GameConfig from '../model/GameConfig';
 import GameID from '../model/GameID';
+import GameState from '../model/GameState';
 import HTTPValidationError from '../model/HTTPValidationError';
 import Message from '../model/Message';
 import PlayerProfile from '../model/PlayerProfile';
@@ -57,6 +58,37 @@ export default class DefaultApi {
     }
     createNewGameGameCreatePost(gameConfig) {
       return this.createNewGameGameCreatePostWithHttpInfo(gameConfig)
+        .then(function(response_and_data) {
+          return response_and_data.data;
+        });
+    }
+    gameStateStateGetWithHttpInfo(opts) {
+      opts = opts || {};
+      let postBody = null;
+
+      let pathParams = {
+      };
+      let queryParams = {
+        'token_query': opts['tokenQuery']
+      };
+      let headerParams = {
+        'token-header': opts['tokenHeader']
+      };
+      let formParams = {
+      };
+
+      let authNames = [];
+      let contentTypes = [];
+      let accepts = ['application/json'];
+      let returnType = GameState;
+      return this.apiClient.callApi(
+        '/state', 'GET',
+        pathParams, queryParams, headerParams, formParams, postBody,
+        authNames, contentTypes, accepts, returnType, null
+      );
+    }
+    gameStateStateGet(opts) {
+      return this.gameStateStateGetWithHttpInfo(opts)
         .then(function(response_and_data) {
           return response_and_data.data;
         });
@@ -156,6 +188,37 @@ export default class DefaultApi {
     }
     placePiecePlacePut(bodyPlacePiecePlacePut, opts) {
       return this.placePiecePlacePutWithHttpInfo(bodyPlacePiecePlacePut, opts)
+        .then(function(response_and_data) {
+          return response_and_data.data;
+        });
+    }
+    whoseTurnTurnGetWithHttpInfo(opts) {
+      opts = opts || {};
+      let postBody = null;
+
+      let pathParams = {
+      };
+      let queryParams = {
+        'token_query': opts['tokenQuery']
+      };
+      let headerParams = {
+        'token-header': opts['tokenHeader']
+      };
+      let formParams = {
+      };
+
+      let authNames = [];
+      let contentTypes = [];
+      let accepts = ['application/json'];
+      let returnType = Object;
+      return this.apiClient.callApi(
+        '/turn', 'GET',
+        pathParams, queryParams, headerParams, formParams, postBody,
+        authNames, contentTypes, accepts, returnType, null
+      );
+    }
+    whoseTurnTurnGet(opts) {
+      return this.whoseTurnTurnGetWithHttpInfo(opts)
         .then(function(response_and_data) {
           return response_and_data.data;
         });

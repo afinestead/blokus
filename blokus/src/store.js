@@ -1,17 +1,22 @@
 import { createStore } from 'vuex';
 import { ApiClient, DefaultApi } from './api/src/index'
 
-const apiLocation = "localhost:8888";
+function getAPIlocation() {
+    return `${window.location.hostname}:8888`;
+}
 
 const store = createStore({
     state: {
-        apiLocation: apiLocation,
-        api: new DefaultApi(new ApiClient(`http://${apiLocation}`)),
+        apiLocation: getAPIlocation(),
+        api: new DefaultApi(new ApiClient(`http://${getAPIlocation()}`)),
         token: localStorage.getItem("access_token"),
     },
     actions: {
         getCurrentPlayer({state}) {
             return state.api.getCurrentPlayerPlayerGet({tokenHeader: state.token});
+        },
+        getGameState({state}) {
+            return state.api.gameStateStateGet({tokenHeader: state.token})
         },
         joinGame({state, commit}, gameId) {
             return state.api.joinGameGameGameIdJoinPost(gameId)

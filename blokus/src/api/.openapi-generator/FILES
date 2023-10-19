@@ -9,6 +9,7 @@ docs/Coordinate.md
 docs/DefaultApi.md
 docs/GameConfig.md
 docs/GameID.md
+docs/GameState.md
 docs/HTTPValidationError.md
 docs/Message.md
 docs/Piece.md
@@ -25,6 +26,7 @@ src/model/BodyPlacePiecePlacePut.js
 src/model/Coordinate.js
 src/model/GameConfig.js
 src/model/GameID.js
+src/model/GameState.js
 src/model/HTTPValidationError.js
 src/model/Message.js
 src/model/Piece.js
@@ -36,6 +38,7 @@ test/model/BodyPlacePiecePlacePut.spec.js
 test/model/Coordinate.spec.js
 test/model/GameConfig.spec.js
 test/model/GameID.spec.js
+test/model/GameState.spec.js
 test/model/HTTPValidationError.spec.js
 test/model/Message.spec.js
 test/model/Piece.spec.js

@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import auto, Enum, IntEnum
 from pydantic import BaseModel, constr
 from typing import List, Optional, Set
 
@@ -30,6 +30,15 @@ class EndGameOn(IntEnum):
     FIRST_PLAYER_OUT = 0
     LAST_PLAYER_OUT = 1
 
+class GameStatus(str, Enum):
+    WAITING = "waiting"
+    ACTIVE = "active"
+    DONE = "done"
+
+class GameState(BaseModel):
+    status: str # TODO: Why won't GameStatus enum work?
+    turn: Optional[int]
+
 class GameConfig(BaseModel):
     players: int
     board_size: int
@@ -43,5 +52,6 @@ class PlayerProfile(BaseModel):
     color: int
     name: str
     pieces: Optional[List[Piece]] = None
+
 
 

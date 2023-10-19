@@ -78,7 +78,7 @@ watch(() => props.blocks, (newBlocks) => blocksInternal.value = newBlocks);
 
 function handlePieceClick(evt) {
   if (evt.button === 2) {
-    flipPiece();
+    flipPiece("x");
   } else {
     clicks.value++;
     if (clicks.value === 1) {
@@ -106,8 +106,10 @@ function translatePiece(blocks) {
   return blocks.map(([x,y]) => [x-minX,y-minY]);
 }
 
-function flipPiece(event) {
-  const p = blocksInternal.value.map(([x,y]) => [-x,y]);
+function flipPiece(ax) {
+  const p = 
+    ax === "x" ? blocksInternal.value.map(([x,y]) => [x,-y]) :
+                 blocksInternal.value.map(([x,y]) => [-x,y]);
   blocksInternal.value = translatePiece(p);
   emit("change");
 }

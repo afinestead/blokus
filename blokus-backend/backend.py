@@ -55,7 +55,6 @@ def verify_player_token(
     token_header: Annotated[str | None, Header()] = None,
     token_query: Annotated[str | None, Query()] = None,
 ):
-    print(token_header, token_query)
     try:
         return authorization.decode_access_token(token_header, SECRET_KEY)
     except authorization.AuthorizationError:
@@ -88,12 +87,6 @@ async def join_game(game_id: str):
             SECRET_KEY,
             60,
         ))
-        # return models.PlayerProfile(
-        #     player_id=player_internal.pid,
-        #     color=player_internal.color,
-        #     name=player_internal.name,
-        #     pieces=[models.Piece(shape={models.Coordinate(x=x,y=y) for x,y in piece}) for piece in player_internal.pieces],
-        # )
     except KeyError:
         return JSONResponse(status_code=404, content="Unknown game") 
     except GameManager.InvalidGameState:
@@ -107,17 +100,12 @@ async def join_game(game_id: str):
 async def get_current_player(
     token: Annotated[models.AccessToken, Depends(verify_player_token)],
 ):
-    print("getting player")
     try:
         game_state = game_server.get_game(token["game_id"])
-        print("got state")
     except KeyError:
         return HTTPException(status_code=404, detail="Unknown game")
-    print("with...")
     with game_state:
-        print("k")
         player = game_state.get_player_by_id(token["player_id"])
-        print(player)
 
     return models.PlayerProfile(
         player_id=player.pid,
@@ -125,6 +113,26 @@ async def get_current_player(
         name=player.name,
         pieces=[models.Piece(shape={models.Coordinate(x=x,y=y) for x,y in piece}) for piece in player.pieces]
     )
+
+
+@app.get("/turn", response_model=int)
+async def whose_turn(token: Annotated[models.AccessToken, Depends(verify_player_token)]):
+    try:
+        game_state = game_server.get_game(token["game_id"])
+    except KeyError:
+        return HTTPException(status_code=404, detail="Unknown game")
+    with game_state:
+        return game_state.whose_turn
+
+
+@app.get("/state", response_model=models.GameState)
+async def game_state(token: Annotated[models.AccessToken, Depends(verify_player_token)]):
+    try:
+        game_state = game_server.get_game(token["game_id"])
+    except KeyError:
+        return HTTPException(status_code=404, detail="Unknown game")
+    with game_state:
+        return models.GameState(status=game_state.status.value, turn=game_state.whose_turn)
 
 
 @app.put("/place", response_class=JSONResponse)
@@ -139,10 +147,13 @@ async def place_piece(
         return HTTPException(status_code=404, detail="Unknown game")
     try:
         with game_state:
+            if game_state.status != models.GameStatus.ACTIVE:
+                pass
+                # return JSONResponse(status_code=409, content="Game not started")
             if game_state.whose_turn != token["player_id"]:
                 return JSONResponse(status_code=409, content="Not your turn silly")
             await game_state.place_piece(piece, origin, token["player_id"])
-            game_state.next_turn()
+            await game_state.next_turn()
 
         return JSONResponse(status_code=200, content="Board updated")
     except board.InvalidBoardState:
@@ -156,13 +167,10 @@ async def game(
     token: Annotated[models.AccessToken, Depends(verify_player_token)],
 ):
     try:
-        print("getting game")
         game_state = game_server.get_game(token["game_id"])
-        print("got it")
     except KeyError:
         return WebSocketException(code=FastAPIStatus.WS_1008_POLICY_VIOLATION)
     
-    print("connecting")
     await game_state.connect_player(websocket, pid=token["player_id"])
     
 

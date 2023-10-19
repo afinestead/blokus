@@ -2,6 +2,15 @@
     <!-- TODO:
     If a piece is rotated/flipped while hovering, the highlighting doesn't update
     -->
+    <!-- <div v-if="!gameActive">
+      Waiting for all players to join...
+      <players
+        :playerID="playerID"
+        :players="allPlayers"
+        :colors="playerColors"
+        @update:color="handleColorUpdate"
+      />
+    </div> -->
   
     <div class="gameplay-area">
       <div class="players">
@@ -10,7 +19,33 @@
           :key="player.player_id"
           :name="playerNames[player.player_id]"
           :color="playerColors[player.player_id]"
-        />
+          :my-turn="whoseTurn === player.player_id"
+        >
+          <template v-slot:prepend v-if="player.player_id === playerID">
+            <v-icon size="x-small" color="yellow">mdi-star</v-icon>
+          </template>
+          
+          <template v-slot:append v-if="player.player_id === playerID">
+            <span>
+              <v-btn 
+                @click="colorPickerActive = !colorPickerActive"
+                icon="mdi-format-color-fill"
+                variant="plain"
+                size="small"
+              />
+              <v-dialog width="500" v-model="colorPickerActive">
+                <template v-slot:default>
+                  <v-color-picker
+                    :modes="['rgb']"
+                    dot-size="10"
+                    hide-inputs
+                    v-model="playerColors[player.player_id]"
+                  />
+                </template>
+              </v-dialog>
+            </span>
+          </template>
+        </player-card>
       </div>
       <div v-if="translatedBoard" ref="boardRef" class="board">
         <div v-for="row, i in translatedBoard" :key="i" class="board-row">
@@ -24,7 +59,7 @@
         </div>
       </div>
       
-      <div class="my-pieces" :style="{height: `${boardSize*squareSize}px`}">
+      <div class="my-pieces">
         <piece
           v-if="myPieces.length !== 0"
           class="unplaced-piece"
@@ -37,6 +72,25 @@
           @contextmenu.prevent
         />
       </div>
+    </div>
+
+    <div class="chat-box">
+      <div class="live-chat">
+        <div v-for="msg in liveChat" class="chat-msg">
+          <span :style="{color: playerColors[msg.pid]}"> {{ playerNames[msg.pid] }}: </span>
+          <span> {{ msg.msg }}</span>
+        </div>
+      </div>
+      <v-text-field
+        v-model="myChat"
+        class="my-chat"
+        placeholder="Say something..."
+        hide-details
+        variant="outlined"
+        append-inner-icon="mdi-send"
+        @click:appendInner="sendMessage"
+        @keydown.enter="sendMessage"
+      />
     </div>
 
     <piece
@@ -62,6 +116,7 @@ import { nextTick, onMounted, ref, reactive, computed, watch } from 'vue'
 import BoardSquare from './BoardSquare.vue';
 import Piece from './Piece.vue'
 import PlayerCard from './PlayerCard.vue'
+import Players from './Players.vue'
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 
@@ -69,6 +124,8 @@ import { useStore } from 'vuex';
 const store = useStore();
 const router = useRouter()
 const squareSize = 21;
+
+const gameActive = ref(false);
 
 const board = ref([]);
 const boardSize = ref(0);
@@ -78,6 +135,8 @@ const allPlayers = ref([]);
 const playerID = ref(null);
 const playerColors = computed(() => allPlayers.value?.reduce((acc, p) => ({...acc, [p.player_id]: p.color ? `#${p.color.toString(16).padStart(6, '0')}` : "#ffffff"}), {}));
 const playerNames = computed(() => allPlayers.value?.reduce((acc, p) => ({...acc, [p.player_id]: p.name}), {}));
+const whoseTurn = ref(null);
+
 const selectedPiece = ref(null);
 const selectedPieceRef = ref(null);
 const selectedPieceOverlap = ref(null);
@@ -85,15 +144,19 @@ const cursorX = ref(null);
 const offsetX = ref(null);
 const cursorY = ref(null);
 const offsetY = ref(null);
+
 const ws = ref(null);
+
+const myChat = ref("");
+const liveChat = ref([]);
 
 const translatedBoard = computed(() => translateBoard(board.value, playerID.value));
 const boardHTML = ref([]);
 
+const colorPickerActive = ref(false);
+
 function calculateOverlap(i, j) {
   if (selectedPiece.value) {
-
-    console.log(selectedPieceRef.value.blocksInternal);
 
     const OccupiedByMe = ([x,y]) => translatedBoard.value[x][y] === playerID.value;
 
@@ -170,7 +233,6 @@ function calculateOverlap(i, j) {
     // TODO: be smarter about recomputing css
     clearHighlight();
 
-    console.log(overlapCoords);
     if (
       overlapCoords !== null &&
       overlapCoords.every(coords => !HasSideNeighbor(coords)) &&
@@ -233,10 +295,22 @@ onMounted(() => {
           boardSize.value = msg.board.length;
           board.value = msg.board;
         }
+        if ("turn" in msg) {
+          whoseTurn.value = msg.turn;
+        }
+        if ("status" in msg) {
+          gameActive.value = msg.status === "active";
+        }
+        if ("chat" in msg) {
+          liveChat.value.unshift({
+            pid: msg.chat.pid,
+            msg: msg.chat.msg
+          })
+        }
       }
       ws.value = new_ws;
     })
-    .catch(() => router.push("/lobby"));
+    .catch(() => router.push("/join"));
 
 });
 
@@ -329,7 +403,7 @@ function isMyTurn() {
 function translateBoard(matrix, n) {
   if (!matrix.length || n == null) {
     return [];
-  }
+  }<v-icon v-show="myTurn" size="x-small" color="yellow">mdi-star</v-icon>
   if (n === 1) {
     return matrix;
   }
@@ -360,11 +434,20 @@ function issueBoardUpdate(piece) {
     y: tile.y - origin.y,
   }));
 
-  console.log(shape, origin);
-  
-  // return Promise.resolve()
   return store.dispatch("placePiece", {piece: {shape: shape}, origin: origin});
 };
+
+function handleColorUpdate(color) {
+  const color_as_int = parseInt(color.substring(1), 16);
+  ws.value.send(`{"update": {"color": ${color_as_int}}}`);
+}
+
+function sendMessage() {
+  if (myChat.value.length) {
+    ws.value.send(`{"chat": "${myChat.value}"}`);
+    myChat.value = "";
+  }
+}
 
 watch(selectedPiece, (newPiece) => {
   if (newPiece === null) {
@@ -374,34 +457,39 @@ watch(selectedPiece, (newPiece) => {
 
 watch(translatedBoard, () => {
   nextTick(() => boardHTML.value = Array.from(boardRef.value?.children || []).map(htmlCol => Array.from(htmlCol?.children)));
-})
+});
+
+watch(colorPickerActive, (isActive) => {
+  if (!isActive) {
+    const color_update = playerColors.value[playerID.value];
+    const color_as_int = parseInt(color_update.substring(1), 16);
+    console.log(color_update, color_as_int);
+    console.log("push player update");
+    ws.value.send(`{"update": {"color": ${color_as_int}}}`);
+  }
+});
 
 </script>
 
 <style scoped>
 .gameplay-area {
-  display: block;
-}
-
-.players {
-  display: block;
-  position: relative;
-  float: left;
+  display: flex;
+  margin: 2em;
 }
 
 .board {
-  display: block;
-  position: relative;
-  float: left;
+  border: 1px solid black;
+  background-color: lightgray;
+  height: min-content;
 }
 
 .board-row {
   display: flex;
 }
 
-.active-players {
-  display: block;
-  padding-right: 2em;
+.players {
+  min-width: 12em;
+  margin-right: 1em;
 }
 
 .highlighted {
@@ -409,17 +497,11 @@ watch(translatedBoard, () => {
 }
 
 .my-pieces {
-  width: 40%;
   margin-left: 2em;
-  position: relative;
-  float: left;
   box-sizing: border-box;
-  border: 2px dotted green;
-}
-
-.my-info {
-  width: 100%;
   border: 1px solid black;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .unplaced-piece {
@@ -436,5 +518,22 @@ watch(translatedBoard, () => {
   visibility: hidden;
   opacity: 0;
 }
+
+.chat-box {
+  margin: 2em;
+}
+
+.live-chat {
+  display: flex;
+  flex-direction: column-reverse;
+  padding: 1em;
+  border: 1px solid grey;
+  border-radius: 4px;
+  height: 10em;
+  max-height: fit-content;
+  overflow-y: auto;
+  resize: vertical;
+}
+
 </style>
   
