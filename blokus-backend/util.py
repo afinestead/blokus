@@ -1,16 +1,19 @@
-from typing import Set
+from typing import List, Set
 
 # import matplotlib.pyplot as plt
 
+import models
 from piece import Piece
 
-def is_unique(piece: Piece, unique: Set[Piece]):
+def find_in_set(piece: Piece, unique: Set[Piece]):
     for rot in (0, 90, 180, 270):
-        rotated = piece.rotate(rot)
-        reflected = rotated.reflect()
-        if rotated.translate() in unique or reflected.translate() in unique:
-            return False
-    return True
+        rotated = piece.rotate(rot).translate()
+        reflected = rotated.reflect().translate()
+        if rotated in unique:
+            return rotated
+        if reflected in unique:
+            return reflected
+    return None
 
 def _generate(pieces: Set[Piece]) -> Set[Piece]:
     gen_up  = lambda p: (p[0]-1,p[1])
@@ -25,7 +28,7 @@ def _generate(pieces: Set[Piece]) -> Set[Piece]:
             for neighbor_gen in (gen_left, gen_right, gen_down, gen_up):
                 neighbor = neighbor_gen(block)
                 new_piece = (piece + neighbor).translate()
-                if is_unique(new_piece, new_pieces):
+                if find_in_set(new_piece, new_pieces) is None:
                     new_pieces.add(new_piece)
     return new_pieces
 
@@ -39,9 +42,77 @@ def generate_pieces(degree) -> Set[Piece]:
         print(f"{len(new_pieces)} blocks generated, {len(pieces)} blocks total")
     return pieces
 
-def generate_board(n_players, piece_degree):
-    lateral_len = piece_degree * 4
+
+def find_corners(board: List[List[int]], pid: int):
     pass
+
+def generate_board(n_players, piece_degree):
+    '''
+    [####, ####] 2
+    [####, ####] 2
+
+    [None, ####, ####, None]  2
+    [####, ####, ####, ####]  4
+    [####, ####, ####, ####]  4
+    [None, ####, ####, None]  2
+    
+    [None, None, None, ####, ####, None, None, None]  2
+    [None, None, None, ####, ####, None, None, None]  2
+    [None, None, ####, ####, ####, ####, None, None]  4
+    [None, None, ####, ####, ####, ####, None, None]  4
+    [####, ####, ####, ####, ####, ####, ####, ####]  8
+    [####, ####, ####, ####, ####, ####, ####, ####]  8
+    [None, None, ####, ####, ####, ####, None, None]  4
+    [None, None, ####, ####, ####, ####, None, None]  4
+    [None, None, None, ####, ####, None, None, None]  2
+    [None, None, None, ####, ####, None, None, None]  2
+    
+    '''
+    lateral_len = piece_degree * 4
+
+    def middle_n_idx(n, len):
+        # n = 1, len = 1, -> [0]
+        # n = 1, len = 3, -> [1]
+        # n = 1, len = 5, -> [2]
+        # n = 3, len = 3, -> [0,1,2]
+        # n = 3, len = 5, -> [1,2,3]
+        pass
+
+
+    board_deg = (((n_players - 1) // 4) * 2) + 1
+    print(board_deg)
+    for cols in range(0, board_deg, 2):
+        cols = cols + 1
+        print(cols)
+        row = [None]*board_deg
+        row[(cols//2)-cols:cols] = "X"
+        row[cols//2 - cols:cols//2] = "X"
+        print(row)
+
+
+    # max_lateral_len = lateral_len * board_deg
+
+    # row_duplicates = 2
+
+    # board = []
+
+    # print(lateral_len, board_deg)
+
+    # for row in range(board_deg):
+    #     r = [None]*lateral_len*(row+1)
+    #     board.append()
+
+    # for row in range(board_deg, 0, -1):
+    #     print(row)
+    #     board.append([None]*lateral_len*(row))
+    
+    # return board
+    
+
+
+
+
+
 
 def show_piece(piece):
     # fig = plt.figure()
@@ -54,6 +125,8 @@ def show_piece(piece):
     pass
 
 if __name__ == "__main__":
+    print(generate_board(4, 5))
+
     # pieces = generate_pieces(degree)
     # print(pieces)
     # print(len(pieces))
@@ -78,17 +151,17 @@ if __name__ == "__main__":
     # assert(not is_unique(p1, {p2}))
     # assert(is_unique(p1, {p3}))
 
-    degree = 12
-    pieces = generate_pieces(degree)
-    print(len(pieces))
+    # degree = 12
+    # pieces = generate_pieces(degree)
+    # print(len(pieces))
 
-    total_blocks = 0
-    for piece in pieces:
-        total_blocks += len(piece)
-    print(total_blocks)
+    # total_blocks = 0
+    # for piece in pieces:
+    #     total_blocks += len(piece)
+    # print(total_blocks)
 
-    for piece in pieces:
-        print(piece)
-        show_piece(piece)
+    # for piece in pieces:
+    #     print(piece)
+    #     show_piece(piece)
 
     

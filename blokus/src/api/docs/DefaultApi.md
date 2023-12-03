@@ -149,7 +149,7 @@ No authorization required
 
 ## joinGameGameGameIdJoinPost
 
-> AccessToken joinGameGameGameIdJoinPost(gameId)
+> AccessToken joinGameGameGameIdJoinPost(gameId, opts)
 
 Join Game
 
@@ -160,7 +160,11 @@ import BlokusApi from 'blokusApi';
 
 let apiInstance = new BlokusApi.DefaultApi();
 let gameId = null; // Object | 
-apiInstance.joinGameGameGameIdJoinPost(gameId).then((data) => {
+let opts = {
+  'playerName': null, // Object | 
+  'color': null // Object | 
+};
+apiInstance.joinGameGameGameIdJoinPost(gameId, opts).then((data) => {
   console.log('API called successfully. Returned data: ' + data);
 }, (error) => {
   console.error(error);
@@ -174,6 +178,8 @@ apiInstance.joinGameGameGameIdJoinPost(gameId).then((data) => {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **gameId** | [**Object**](.md)|  | 
+ **playerName** | [**Object**](.md)|  | [optional] 
+ **color** | [**Object**](.md)|  | [optional] 
 
 ### Return type
 

@@ -2,112 +2,88 @@
     <!-- TODO:
     If a piece is rotated/flipped while hovering, the highlighting doesn't update
     -->
-    <!-- <div v-if="!gameActive">
-      Waiting for all players to join...
-      <players
-        :playerID="playerID"
-        :players="allPlayers"
-        :colors="playerColors"
-        @update:color="handleColorUpdate"
-      />
-    </div> -->
-  
-    <div class="gameplay-area">
-      <div class="players">
-        <player-card
-          v-for="player in allPlayers"
-          :key="player.player_id"
-          :name="playerNames[player.player_id]"
-          :color="playerColors[player.player_id]"
-          :my-turn="whoseTurn === player.player_id"
-        >
-          <template v-slot:prepend v-if="player.player_id === playerID">
-            <v-icon size="x-small" color="yellow">mdi-star</v-icon>
-          </template>
-          
-          <template v-slot:append v-if="player.player_id === playerID">
-            <span>
-              <v-btn 
-                @click="colorPickerActive = !colorPickerActive"
-                icon="mdi-format-color-fill"
-                variant="plain"
-                size="small"
-              />
-              <v-dialog width="500" v-model="colorPickerActive">
-                <template v-slot:default>
-                  <v-color-picker
-                    :modes="['rgb']"
-                    dot-size="10"
-                    hide-inputs
-                    v-model="playerColors[player.player_id]"
-                  />
-                </template>
-              </v-dialog>
-            </span>
-          </template>
-        </player-card>
-      </div>
-      <div v-if="translatedBoard" ref="boardRef" class="board">
-        <div v-for="row, i in translatedBoard" :key="i" class="board-row">
-          <board-square
-            v-for="pid, j in row"
-            :key="j"
-            :owner="pid"
-            :colors="playerColors"
-            @mouseover="calculateOverlap(i, j)"
+    <div class="game-container">
+      <div class="gameplay-area">
+        <div v-if="translatedBoard" ref="boardRef" class="board">
+          <div v-for="row, i in translatedBoard" :key="i" class="board-row">
+            <board-square
+              v-for="pid, j in row"
+              :key="j"
+              :owner="pid"
+              :colors="playerColors"
+              @mouseover="calculateOverlap(i, j)"
+            />
+          </div>
+        </div>
+        
+        <div class="my-pieces">
+          <piece
+            v-if="myPieces.length !== 0"
+            class="unplaced-piece"
+            v-for="(p,idx) in myPieces"
+            :key="idx"
+            :color="playerColors[playerID]"
+            :blocks="p"
+            :square-size="10"
+            @click.stop="handlePieceClick($event, p, idx)"
+            @contextmenu.prevent
           />
         </div>
       </div>
-      
-      <div class="my-pieces">
-        <piece
-          v-if="myPieces.length !== 0"
-          class="unplaced-piece"
-          v-for="(p,idx) in myPieces"
-          :key="idx"
-          :color="playerColors[playerID]"
-          :blocks="p"
-          :square-size="10"
-          @click.stop="handlePieceClick($event, p, idx)"
-          @contextmenu.prevent
-        />
-      </div>
-    </div>
 
-    <div class="chat-box">
-      <div class="live-chat">
-        <div v-for="msg in liveChat" class="chat-msg">
-          <span :style="{color: playerColors[msg.pid]}"> {{ playerNames[msg.pid] }}: </span>
-          <span> {{ msg.msg }}</span>
+      <div class="interact-area">
+        <div class="chat-box">
+          <div :class="['game-state', gameMsgStyle]">
+            <span v-if="gameStatus === 'waiting'">Waiting for all players to join</span>
+            <span v-else-if="gameStatus === 'active'">
+              <span class="font-weight-black" :style="{color: playerColors[whoseTurn]}">{{ playerNames[whoseTurn] }}</span>'s turn
+            </span>
+            <span v-else-if="gameStatus === 'done'">Player 1 wins!</span>
+          </div>
+          <div class="live-chat">
+            <div v-for="msg in liveChat" class="chat-msg">
+              <span
+                v-if="msg.pid !== 'GAME'"
+                class="font-weight-black"
+                :style="{color: playerColors[msg.pid]}"
+              >
+                  {{ playerNames[msg.pid] }}:
+              </span>
+              <span :class="[msg.pid === 'GAME' ? gameMsgStyle : '']">{{ msg.msg }}</span>
+            </div>
+          </div>
+          <v-text-field
+            v-model="myChat"
+            class="my-chat"
+            placeholder="Say something..."
+            hide-details
+            variant="outlined"
+            append-inner-icon="mdi-send"
+            @click:appendInner="sendMessage"
+            @keydown.enter="sendMessage"
+          />
         </div>
       </div>
-      <v-text-field
-        v-model="myChat"
-        class="my-chat"
-        placeholder="Say something..."
-        hide-details
-        variant="outlined"
-        append-inner-icon="mdi-send"
-        @click:appendInner="sendMessage"
-        @keydown.enter="sendMessage"
+
+      <piece
+        v-if="selectedPiece"
+        class="selected-piece"
+        ref="selectedPieceRef"
+        :color="playerColors[playerID]"
+        :blocks="selectedPiece?.block || []"
+        :squareSize="squareSize"
+        :style="{
+          display: selectedPiece === null ? 'none' : 'inline-block',
+          top: `${cursorY + offsetY - (squareSize / 2)}px`,
+          left: `${cursorX + offsetX - (squareSize / 2)}px`,
+        }"
+        @click.stop="handlePieceClick($event, selectedPiece.block, selectedPiece.index)"
+        @contextmenu.prevent
+        @change="nextTick(() => snapPieceToCursor())"
       />
     </div>
 
-    <piece
-      class="selected-piece"
-      ref="selectedPieceRef"
-      :color="playerColors[playerID]"
-      :blocks="selectedPiece?.block || []"
-      :squareSize="squareSize"
-      :style="{
-        display: selectedPiece === null ? 'none' : 'inline-block',
-        top: `${cursorY + offsetY - (squareSize / 2)}px`,
-        left: `${cursorX + offsetX - (squareSize / 2)}px`,
-      }"
-      @click.stop="handlePieceClick($event, selectedPiece.block, selectedPiece.index)"
-      @contextmenu.prevent
-      @change="nextTick(() => snapPieceToCursor())"
-    />
+   
   
   </template>
   
@@ -125,7 +101,7 @@ const store = useStore();
 const router = useRouter()
 const squareSize = 21;
 
-const gameActive = ref(false);
+const gameStatus = ref(null);
 
 const board = ref([]);
 const boardSize = ref(0);
@@ -149,6 +125,10 @@ const ws = ref(null);
 
 const myChat = ref("");
 const liveChat = ref([]);
+const gameMsgStyle = ref([
+  "font-italic",
+  "font-weight-thin",
+]);
 
 const translatedBoard = computed(() => translateBoard(board.value, playerID.value));
 const boardHTML = ref([]);
@@ -299,13 +279,13 @@ onMounted(() => {
           whoseTurn.value = msg.turn;
         }
         if ("status" in msg) {
-          gameActive.value = msg.status === "active";
+          gameStatus.value = msg.status;
         }
         if ("chat" in msg) {
           liveChat.value.unshift({
             pid: msg.chat.pid,
             msg: msg.chat.msg
-          })
+          });
         }
       }
       ws.value = new_ws;
@@ -437,11 +417,6 @@ function issueBoardUpdate(piece) {
   return store.dispatch("placePiece", {piece: {shape: shape}, origin: origin});
 };
 
-function handleColorUpdate(color) {
-  const color_as_int = parseInt(color.substring(1), 16);
-  ws.value.send(`{"update": {"color": ${color_as_int}}}`);
-}
-
 function sendMessage() {
   if (myChat.value.length) {
     ws.value.send(`{"chat": "${myChat.value}"}`);
@@ -471,16 +446,26 @@ watch(colorPickerActive, (isActive) => {
 
 </script>
 
+
 <style scoped>
-.gameplay-area {
+
+.game-container {
+  margin: 0 2em;
+  height: 100vh;
   display: flex;
-  margin: 2em;
+}
+.gameplay-area {
+  margin-right: 1em;
+  max-width: 60%;
+}
+
+.interact-area {
+  flex: 1;
 }
 
 .board {
   border: 1px solid black;
   background-color: lightgray;
-  height: min-content;
 }
 
 .board-row {
@@ -497,11 +482,10 @@ watch(colorPickerActive, (isActive) => {
 }
 
 .my-pieces {
-  margin-left: 2em;
-  box-sizing: border-box;
   border: 1px solid black;
-  max-height: 400px;
+  /* max-height: 100%; */
   overflow-y: auto;
+  background-color: lightgray;
 }
 
 .unplaced-piece {
@@ -520,19 +504,26 @@ watch(colorPickerActive, (isActive) => {
 }
 
 .chat-box {
-  margin: 2em;
+  background-color: lightgray;
+  flex: 1;
+}
+
+.game-state {
+  border: 1px solid grey;
+  border-radius: 4px;
+  padding-left: 0.5em;
 }
 
 .live-chat {
   display: flex;
   flex-direction: column-reverse;
-  padding: 1em;
+  padding: 0.5em;
   border: 1px solid grey;
   border-radius: 4px;
-  height: 10em;
-  max-height: fit-content;
+  min-height: 344px;
+  /* max-height: fit-content; */
   overflow-y: auto;
-  resize: vertical;
+  /* resize: vertical; */
 }
 
 </style>

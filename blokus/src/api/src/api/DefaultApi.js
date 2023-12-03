@@ -124,7 +124,8 @@ export default class DefaultApi {
           return response_and_data.data;
         });
     }
-    joinGameGameGameIdJoinPostWithHttpInfo(gameId) {
+    joinGameGameGameIdJoinPostWithHttpInfo(gameId, opts) {
+      opts = opts || {};
       let postBody = null;
       // verify the required parameter 'gameId' is set
       if (gameId === undefined || gameId === null) {
@@ -135,6 +136,8 @@ export default class DefaultApi {
         'game_id': gameId
       };
       let queryParams = {
+        'player_name': opts['playerName'],
+        'color': opts['color']
       };
       let headerParams = {
       };
@@ -151,8 +154,8 @@ export default class DefaultApi {
         authNames, contentTypes, accepts, returnType, null
       );
     }
-    joinGameGameGameIdJoinPost(gameId) {
-      return this.joinGameGameGameIdJoinPostWithHttpInfo(gameId)
+    joinGameGameGameIdJoinPost(gameId, opts) {
+      return this.joinGameGameGameIdJoinPostWithHttpInfo(gameId, opts)
         .then(function(response_and_data) {
           return response_and_data.data;
         });

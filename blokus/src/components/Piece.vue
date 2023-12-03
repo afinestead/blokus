@@ -21,7 +21,7 @@
 
 <script setup>
 
-import { computed, defineEmits, defineExpose, defineProps, ref, onMounted, watch } from 'vue';
+import { computed, defineExpose, defineProps, ref, onMounted, watch } from 'vue';
 
 const props = defineProps({
   squareSize: {
@@ -127,13 +127,13 @@ function rotatePiece(deg) {
 
 <style scoped>
 .piece {
-    position: relative;
+  position: relative;
 }
 
 .block {
-    position: absolute;
-    border: 1px solid black;
-    margin: 1px;
-    box-sizing: border-box;
+  position: absolute;
+  border: 1px solid black;
+  margin: 1px;
+  box-sizing: border-box;
 }
 </style>

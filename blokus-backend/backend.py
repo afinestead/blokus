@@ -19,7 +19,7 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from os import urandom
-from typing import Annotated, Any, Dict, List, Mapping, Union
+from typing import Annotated, Any, Dict, List, Mapping, Optional, Union
 
 import authorization
 import board
@@ -78,9 +78,13 @@ async def create_new_game(game_config: models.GameConfig):
     "/game/{game_id}/join",
     response_model=models.AccessToken,
 )
-async def join_game(game_id: str):
+async def join_game(
+    game_id: str,
+    player_name: Optional[str] = None,
+    color: Optional[int] = None,
+):
     try:
-        player_internal = game_server.join_game(game_id)
+        player_internal = await game_server.join_game(game_id, player_name, color)
         return models.AccessToken(access_token=authorization.create_access_token(
             player_internal.pid, 
             game_id, 
@@ -148,12 +152,10 @@ async def place_piece(
     try:
         with game_state:
             if game_state.status != models.GameStatus.ACTIVE:
-                pass
-                # return JSONResponse(status_code=409, content="Game not started")
+                return JSONResponse(status_code=409, content="Game not started")
             if game_state.whose_turn != token["player_id"]:
                 return JSONResponse(status_code=409, content="Not your turn silly")
             await game_state.place_piece(piece, origin, token["player_id"])
-            await game_state.next_turn()
 
         return JSONResponse(status_code=200, content="Board updated")
     except board.InvalidBoardState:

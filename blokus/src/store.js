@@ -18,8 +18,15 @@ const store = createStore({
         getGameState({state}) {
             return state.api.gameStateStateGet({tokenHeader: state.token})
         },
-        joinGame({state, commit}, gameId) {
-            return state.api.joinGameGameGameIdJoinPost(gameId)
+        joinGame({state, commit}, {gameId, name, color}) {
+            console.log(name, color);
+            return state.api.joinGameGameGameIdJoinPost(
+                gameId,
+                { 
+                    playerName: name,
+                    color: color
+                }
+            )
                 .then(r => commit("setToken", r.access_token));
         },
         getGameWebSocket({state}) {

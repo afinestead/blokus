@@ -14,6 +14,21 @@ from playerprofile import PlayerProfile
 from socketmanager import SocketManager
 import models
 
+piece_cache: Dict[int, Set[Piece]] = dict()
+cache_lock = Lock()
+
+def get_or_generate_pieces(degree) -> Set[Piece]:
+    with cache_lock:
+        if pieces := piece_cache.get(degree):
+            return pieces
+    
+    gen = util.generate_pieces(degree)
+    with cache_lock:
+        piece_cache[degree] = gen
+    
+    return gen
+
+
 class GameManager:
     class InvalidGameState(Exception):
         pass
@@ -28,8 +43,7 @@ class GameManager:
 
         self._block_deg: int = block_degree
 
-        # TODO: Global piece cache?
-        self._all_pieces: Set[Piece] = util.generate_pieces(self._block_deg)
+        self._all_pieces: Set[Piece] = get_or_generate_pieces(block_degree)
 
         self._unique_pid: Set[int] = set(range(1, players+1))
         self._taken_pid: Set[int] = set()
@@ -75,37 +89,62 @@ class GameManager:
         ]))
 
     async def connect_player(self, websocket: WebSocket, pid: int):
-        await self._socket_manager.connect(websocket)
-        # When a new user connects, send them the current game state
         with self.lock:
+            await self._socket_manager.connect(websocket)
+
+            # When a new user connects, send them the current game state
             await self._socket_manager.send_personal_message(websocket, dict(
+                status=self._status.value,
                 board=self.board.board,
                 player_id=pid,
                 turn=self.whose_turn,
+                players=[
+                    dict(
+                        player_id=p.pid,
+                        color=p.color,
+                        name=p.name,
+                    ) for p in self.players.values()
+                ],
             ))
-            # Also alert everyone else of a new change to the online players
-            await self.broadcast_players_change()
-            await self._socket_manager.broadcast(dict(status=self._status.value))
+
+            if pid not in self._taken_pid:
+                # Alert everyone of a new change to the online players
+                await self._socket_manager.broadcast(dict(
+                    status=self._status.value,
+                    chat=dict(
+                        pid="GAME",
+                        msg=f"{self.players[pid].name} has joined the game",
+                    ),
+                    players=[
+                        dict(
+                            player_id=p.pid,
+                            color=p.color,
+                            name=p.name,
+                        ) for p in self.players.values()
+                    ],
+                ))
+                self._taken_pid.add(pid)
+                
         try:
             while True:
                 data: Dict[str, Any] = await websocket.receive_json()
                 print(data)
-
-                if "update" in data:
-                    with self.lock:
-                        await self.handle_player_update(
+                with self.lock:
+                    if "update" in data:
+                            await self.handle_player_update(
+                                pid=pid,
+                                color=data["update"].get("color"),
+                                name=data["update"].get("name"),
+                            )
+                    if "chat" in data:
+                        await self._socket_manager.broadcast(dict(chat=dict(
                             pid=pid,
-                            color=data["update"].get("color"),
-                            name=data["update"].get("name"),
-                        )
-                if "chat" in data:
-                    await self._socket_manager.broadcast(dict(chat=dict(
-                        pid=pid,
-                        msg=data["chat"],
-                    )))
+                            msg=data["chat"],
+                        )))
 
         except WebSocketDisconnect:
-            self._socket_manager.disconnect(websocket)
+            with self.lock:
+                self._socket_manager.disconnect(websocket)
 
     @property
     def whose_turn(self) -> int:
@@ -117,28 +156,35 @@ class GameManager:
 
     @property
     def status(self):
-        return self._status
-
-    async def next_turn(self):
-        self._turn_iter.rotate(-1)
-        await self._socket_manager.broadcast(dict(turn=self.whose_turn))
-    
+        with self.lock:
+            if self._unique_pid:
+                # Waiting for other players to join
+                return models.GameStatus.WAITING
+            # elif game_over: TODO: check end-game scenarios
+            #   return models.GameStatus.DONE
+            else:
+                return models.GameStatus.ACTIVE
+        
     async def place_piece(
         self,
         piece: models.Piece,
         origin: models.Coordinate,
         pid: int
     ):
-        piece_internal = Piece({(tile.x, tile.y) for tile in piece.shape}).translate()
+        piece_internal = Piece({(tile.x, tile.y) for tile in piece.shape})
         player = self.players[pid]
-        if piece_internal not in player.pieces:
+        if not (piece_match := util.find_in_set(piece_internal, player.pieces)):
             raise GameManager.InvalidGameState("Invalid piece")
         
         self.board.place(piece, origin, pid)
-        player.pieces.remove(piece_internal)
+        player.pieces.remove(piece_match)
         
-        await self._socket_manager.broadcast(dict(board=self.board.board))
-    
+        self._turn_iter.rotate(-1)
+        await self._socket_manager.broadcast(dict(
+            board=self.board.board,
+            turn=self.whose_turn,
+        ))
+
     def get_player_by_id(self, pid: int):
         return self.players[pid]
 
@@ -148,18 +194,16 @@ class GameManager:
         except KeyError:
             return []
     
-    def add_player(self):
+    async def add_player(
+        self,
+        name: Optional[str] = None,
+        color: Optional[int] = None
+    ):
         with self.lock:
             if self._unique_pid:
                 pid = self._unique_pid.pop()
-                self._taken_pid.add(pid)
-                color = (
-                    random.randrange(0, 0xff) << 16 |
-                    random.randrange(0, 0xff) << 8 |
-                    random.randrange(0, 0xff) << 0
-                )
                 pieces = self._all_pieces.copy()
-                name = f"Player {pid}"
+                name = name or f"Player {pid}"
                 player = PlayerProfile(pid, color, name, pieces)
 
                 self._turn_iter.append(pid)
@@ -199,8 +243,13 @@ class GameServer:
 
         return models.GameID(game_id=game_id)
     
-    def join_game(self, game_id: models.GameID):
-        return self.active_games[game_id].add_player()
+    async def join_game(
+        self,
+        game_id: models.GameID,
+        name: Optional[str] = None,
+        color: Optional[int] = None,
+    ):
+        return await self.active_games[game_id].add_player(name, color)
 
     def drop_game(self, game_id: models.GameID) -> None:
         self.active_games.pop(game_id)

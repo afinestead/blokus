@@ -20,7 +20,7 @@ const sqColor = computed(() => (props.colors != null && props.owner != null) ? p
   border: 1px solid black;
   margin: 1px;
   box-sizing: border-box;
-  width: 20px;
-  height: 20px;
+  flex: 1;
+  aspect-ratio: 1 / 1;
 }
 </style>
