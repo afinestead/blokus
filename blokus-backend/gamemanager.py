@@ -33,6 +33,9 @@ class GameManager:
     class InvalidGameState(Exception):
         pass
     
+    class GameOver(Exception):
+        pass
+    
     def __init__(
         self,
         players: int,
@@ -164,6 +167,19 @@ class GameManager:
             #   return models.GameStatus.DONE
             else:
                 return models.GameStatus.ACTIVE
+    
+    def next_turn(self):
+        possible_turns = list(self._turn_iter)
+
+        for _ in possible_turns:
+            self._turn_iter.rotate(-1)
+            maybe_turn = self._turn_iter[0]
+            if util.has_legal_move(self.board, maybe_turn, self.players[maybe_turn].pieces):
+                return maybe_turn
+            # TODO: If configured to end on first out, raise GameOver here
+            self._turn_iter.popleft()
+        
+        raise GameManager.GameOver("No more legal moves")
         
     async def place_piece(
         self,
@@ -171,15 +187,16 @@ class GameManager:
         origin: models.Coordinate,
         pid: int
     ):
-        piece_internal = Piece({(tile.x, tile.y) for tile in piece.shape})
+        piece_internal = Piece(piece.shape)
         player = self.players[pid]
         if not (piece_match := util.find_in_set(piece_internal, player.pieces)):
             raise GameManager.InvalidGameState("Invalid piece")
         
-        self.board.place(piece, origin, pid)
+        self.board.place(piece_internal, origin, pid)
         player.pieces.remove(piece_match)
+
+        self.next_turn()
         
-        self._turn_iter.rotate(-1)
         await self._socket_manager.broadcast(dict(
             board=self.board.board,
             turn=self.whose_turn,

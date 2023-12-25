@@ -1,3 +1,14 @@
+"""
+TODOS:
+End game detection
+Deployment
+
+FEATURES:
+Timer per player/game
+Evaluation bar
+Board sizes (n players)
+
+"""
 import asyncio
 import itertools
 from fastapi import (
@@ -115,7 +126,7 @@ async def get_current_player(
         player_id=player.pid,
         color=player.color,
         name=player.name,
-        pieces=[models.Piece(shape={models.Coordinate(x=x,y=y) for x,y in piece}) for piece in player.pieces]
+        pieces=[models.Piece(shape=piece.squares) for piece in player.pieces]
     )
 
 

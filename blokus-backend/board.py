@@ -2,7 +2,7 @@ from enum import IntEnum
 from threading import Lock
 
 import models
-# from piece import Piece
+from piece import Piece
 
 class InvalidBoardState(Exception):
     pass
@@ -60,34 +60,40 @@ class Board:
     
     def __exit__(self, *_exc):
         pass
-        
-    def place(
+    
+    def valid_placement(
         self,
-        piece: models.Piece,
+        piece: Piece,
         origin: models.Coordinate,
         player_id: int
-    ):  
-        print(origin, piece)
+    ):
         valid_corner = False
-        for coord in piece.shape:
+        for coord in piece:
             abs_coord = models.Coordinate(x=origin.x+coord.x, y=origin.y+coord.y)
             if self.get_board_square(abs_coord) is not None:
-                raise InvalidBoardState
+                return False
             
             if self.has_self_side(abs_coord, player_id, max_coord=self.dimension):
-                raise InvalidBoardState
+                return False
             
             valid_corner = (
                 valid_corner or
                 coord == models.Coordinate(x=0,y=0) or
-                self.has_valid_corner(abs_coord, player_id, max_coord=self.dimension)
+                self.has_valid_corner(abs_coord, player_id)
             )
+        return valid_corner
 
-        if not valid_corner:
+    def place(
+        self,
+        piece: Piece,
+        origin: models.Coordinate,
+        player_id: int
+    ):
+        if not self.valid_placement(piece, origin, player_id):
             raise InvalidBoardState
         
         # All checks pass, this is a valid board state
-        for coord in piece.shape:
+        for coord in piece:
             abs_coord = models.Coordinate(x=origin.x+coord.x, y=origin.y+coord.y)
             self.board[abs_coord.x][abs_coord.y] = player_id
         
@@ -95,7 +101,6 @@ class Board:
     
 
     def get_board_square(self, coord: models.Coordinate) -> int:
-        print(coord.x, coord.y)
         return self.board[coord.x][coord.y]
 
     def occupied_by_player(self, pid: int, coord: models.Coordinate) -> bool:
@@ -127,13 +132,10 @@ class Board:
             (d is not None and occupied_by_pid(d))
         )
 
-    def has_valid_corner(
-        self,
-        coord: models.Coordinate,
-        pid: int,
-        max_coord: int,
-        min_coord: int = 0,
-    ):
+    def has_valid_corner(self, coord: models.Coordinate, pid: int):
+        min_coord = 0
+        max_coord = self.dimension
+
         def get_neighbor_helper(coord, dir: Direction) -> models.Coordinate:
             return get_neighbor(coord, dir, min_coord, max_coord)
 

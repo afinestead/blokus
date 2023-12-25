@@ -20,6 +20,15 @@ class Coordinate(BaseModel):
     def __hash__(self):
         return hash((self.x, self.y))
 
+    def __lt__(self, other):
+        return (self.x < other.x) or (self.y < other.y)
+    
+    def __gt__(self, other):
+        return (self.x > other.x) or (self.y > other.y)
+    
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
+
     x: int
     y: int
 

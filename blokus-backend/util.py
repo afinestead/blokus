@@ -3,7 +3,9 @@ from typing import List, Set
 # import matplotlib.pyplot as plt
 
 import models
+from board import Board
 from piece import Piece
+
 
 def find_in_set(piece: Piece, unique: Set[Piece]):
     for rot in (0, 90, 180, 270):
@@ -16,10 +18,10 @@ def find_in_set(piece: Piece, unique: Set[Piece]):
     return None
 
 def _generate(pieces: Set[Piece]) -> Set[Piece]:
-    gen_up  = lambda p: (p[0]-1,p[1])
-    gen_down = lambda p: (p[0]+1,p[1])
-    gen_left  = lambda p: (p[0],p[1]-1)
-    gen_right    = lambda p: (p[0],p[1]+1)
+    gen_up  = lambda p: models.Coordinate(x=p.x-1,y=p.y)
+    gen_down = lambda p: models.Coordinate(x=p.x+1,y=p.y)
+    gen_left  = lambda p: models.Coordinate(x=p.x,y=p.y-1)
+    gen_right    = lambda p: models.Coordinate(x=p.x,y=p.y+1)
 
     new_pieces: Set[Piece] = set()
 
@@ -27,13 +29,15 @@ def _generate(pieces: Set[Piece]) -> Set[Piece]:
         for block in piece:
             for neighbor_gen in (gen_left, gen_right, gen_down, gen_up):
                 neighbor = neighbor_gen(block)
+                print(neighbor)
                 new_piece = (piece + neighbor).translate()
+                print(new_piece)
                 if find_in_set(new_piece, new_pieces) is None:
                     new_pieces.add(new_piece)
     return new_pieces
 
 def generate_pieces(degree) -> Set[Piece]:
-    pieces: Set[Piece] = {Piece({(0,0)})}
+    pieces: Set[Piece] = {Piece({models.Coordinate(x=0,y=0)})}
     new_pieces = None
     for deg in range(1,degree):
         print(f"Generating {deg+1} blokus")
@@ -43,8 +47,31 @@ def generate_pieces(degree) -> Set[Piece]:
     return pieces
 
 
-def find_corners(board: List[List[int]], pid: int):
-    pass
+def open_corners(board: Board, pid: int) -> List[models.Coordinate]:
+    for i, row in enumerate(board.board):
+        for j, owner in enumerate(row):
+            if owner is None:
+                coord = models.Coordinate(x=i, y=j)
+                if (i,j) == (0,0) and not board.occupied_by_player(pid, coord):
+                    yield coord
+                if board.has_valid_corner(coord, pid):
+                    yield coord
+
+def has_legal_move(board: Board, pid: int, pieces: Set[Piece]):
+    return True
+    for corner in open_corners(board, pid):
+        for piece in pieces:
+            for rotation in (0, 90, 180, 270):
+                rotated = piece.rotate(rotation)
+                if board.valid_placement(rotated.translate(), corner, pid):
+                    return True
+                reflected = rotated.reflect()
+                if board.valid_placement(reflected.translate(), corner, pid):
+                    return True
+            
+    
+    return False
+
 
 def generate_board(n_players, piece_degree):
     '''
@@ -125,7 +152,19 @@ def show_piece(piece):
     pass
 
 if __name__ == "__main__":
-    print(generate_board(4, 5))
+    # print(generate_board(4, 5))
+
+    print(generate_pieces(2))
+
+    # pid = 1
+    # p1 = Piece({(0,0)})
+    # p2 = Piece({(0,0), (1,0)})
+
+    # b = Board(4)
+    # b.place(p1, models.Coordinate(x=0,y=0), pid)
+    # print(b)
+    # for corner in open_corners(b, pid):
+    #     print(corner)
 
     # pieces = generate_pieces(degree)
     # print(pieces)
