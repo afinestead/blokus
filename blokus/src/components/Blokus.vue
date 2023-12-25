@@ -4,6 +4,24 @@
     -->
     <div class="game-container">
       <div class="gameplay-area">
+                
+        <div class="my-pieces">
+          <div
+            class="unplaced-piece"
+            v-if="myPieces.length !== 0"
+            v-for="(p,idx) in myPieces"
+          >
+            <piece
+              :key="idx"
+              :color="playerColors[playerID]"
+              :blocks="p"
+              :square-size="10"
+              @click.stop="handlePieceClick($event, p, idx)"
+              @contextmenu.prevent
+            />
+          </div>
+        </div>
+
         <div v-if="translatedBoard" ref="boardRef" class="board">
           <div v-for="row, i in translatedBoard" :key="i" class="board-row">
             <board-square
@@ -14,20 +32,6 @@
               @mouseover="calculateOverlap(i, j)"
             />
           </div>
-        </div>
-        
-        <div class="my-pieces">
-          <piece
-            v-if="myPieces.length !== 0"
-            class="unplaced-piece"
-            v-for="(p,idx) in myPieces"
-            :key="idx"
-            :color="playerColors[playerID]"
-            :blocks="p"
-            :square-size="10"
-            @click.stop="handlePieceClick($event, p, idx)"
-            @contextmenu.prevent
-          />
         </div>
       </div>
 
@@ -52,16 +56,17 @@
               <span :class="[msg.pid === 'GAME' ? gameMsgStyle : '']">{{ msg.msg }}</span>
             </div>
           </div>
-          <v-text-field
-            v-model="myChat"
-            class="my-chat"
-            placeholder="Say something..."
-            hide-details
-            variant="outlined"
-            append-inner-icon="mdi-send"
-            @click:appendInner="sendMessage"
-            @keydown.enter="sendMessage"
-          />
+          <div class="my-chat">
+            <v-text-field
+              v-model="myChat"
+              placeholder="Say something..."
+              hide-details
+              variant="outlined"
+              append-inner-icon="mdi-send"
+              @click:appendInner="sendMessage"
+              @keydown.enter="sendMessage"
+            />
+          </div>
         </div>
       </div>
 
@@ -71,7 +76,7 @@
         ref="selectedPieceRef"
         :color="playerColors[playerID]"
         :blocks="selectedPiece?.block || []"
-        :squareSize="squareSize"
+        :square-size="squareSize"
         :style="{
           display: selectedPiece === null ? 'none' : 'inline-block',
           top: `${cursorY + offsetY - (squareSize / 2)}px`,
@@ -99,7 +104,7 @@ import { useStore } from 'vuex';
 
 const store = useStore();
 const router = useRouter()
-const squareSize = 21;
+const squareSize = ref(0);
 
 const gameStatus = ref(null);
 
@@ -230,7 +235,15 @@ function calculateOverlap(i, j) {
   selectedPieceOverlap.value = null;
 }
 
+function onResize() {
+  const sq = document.querySelector(".board-square")
+  squareSize.value = Math.round(sq.getBoundingClientRect().width);
+};
+
 onMounted(() => {
+
+  nextTick(() => window.addEventListener('resize', onResize));
+
   document.onmousemove = (event) => {
     cursorX.value = event.pageX;
     cursorY.value = event.pageY;
@@ -274,6 +287,7 @@ onMounted(() => {
         if ("board" in msg) {
           boardSize.value = msg.board.length;
           board.value = msg.board;
+          nextTick(() => onResize());
         }
         if ("turn" in msg) {
           whoseTurn.value = msg.turn;
@@ -322,8 +336,8 @@ function snapPieceToCursor() {
 
   // Find the coordinate of where we snapped to
   selectedPiece.value.origin = [
-    Math.floor(parseInt(snappedToBlock.style.top) / squareSize),
-    Math.floor(parseInt(snappedToBlock.style.left) / squareSize),
+    Math.floor(parseInt(snappedToBlock.style.top) / squareSize.value),
+    Math.floor(parseInt(snappedToBlock.style.left) / squareSize.value),
   ];
 };
 
@@ -450,22 +464,26 @@ watch(colorPickerActive, (isActive) => {
 <style scoped>
 
 .game-container {
-  margin: 0 2em;
-  height: 100vh;
+  height: 100%;
+  width: 100%;
   display: flex;
 }
 .gameplay-area {
   margin-right: 1em;
-  max-width: 60%;
+  min-height: 480px;
+  height: 100%;
+  display: flex;
 }
 
 .interact-area {
-  flex: 1;
+  width: 420px;
 }
 
 .board {
   border: 1px solid black;
   background-color: lightgray;
+  height: 100%;
+  aspect-ratio: 1/1;
 }
 
 .board-row {
@@ -483,14 +501,20 @@ watch(colorPickerActive, (isActive) => {
 
 .my-pieces {
   border: 1px solid black;
-  /* max-height: 100%; */
+  padding: 0.5em;
+  height: 100%;
+  min-width: max-content;
   overflow-y: auto;
+  overflow-x: hidden;
   background-color: lightgray;
 }
 
 .unplaced-piece {
-  margin: 1em;
-  display: inline-block;
+  padding: 1em 0;
+}
+
+.unplaced-piece .piece {
+  margin: auto;
 }
 
 .selected-piece {
@@ -505,7 +529,11 @@ watch(colorPickerActive, (isActive) => {
 
 .chat-box {
   background-color: lightgray;
-  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-size: x-large;
+  min-width: 260px;
 }
 
 .game-state {
@@ -516,14 +544,12 @@ watch(colorPickerActive, (isActive) => {
 
 .live-chat {
   display: flex;
+  flex: 1;
   flex-direction: column-reverse;
   padding: 0.5em;
   border: 1px solid grey;
   border-radius: 4px;
-  min-height: 344px;
-  /* max-height: fit-content; */
   overflow-y: auto;
-  /* resize: vertical; */
 }
 
 </style>

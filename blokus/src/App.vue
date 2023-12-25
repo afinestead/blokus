@@ -22,11 +22,11 @@ onBeforeMount(() => {
   width: 100%;
   height: 100vh;
   padding: 2em;
+  overflow: auto;
 }
 
 .bkgnd {
   height: 100%;
-  display: flex;
 }
 
 #app:before {
