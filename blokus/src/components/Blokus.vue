@@ -6,20 +6,17 @@
       <div class="gameplay-area">
                 
         <div class="my-pieces">
-          <div
+          <piece
             class="unplaced-piece"
             v-if="myPieces.length !== 0"
             v-for="(p,idx) in myPieces"
-          >
-            <piece
-              :key="idx"
-              :color="playerColors[playerID]"
-              :blocks="p"
-              :square-size="10"
-              @click.stop="handlePieceClick($event, p, idx)"
-              @contextmenu.prevent
+            :key="idx"
+            :color="playerColors[playerID]"
+            :blocks="p"
+            :square-size="10"
+            @click.stop="handlePieceClick($event, p, idx)"
+            @contextmenu.prevent
             />
-          </div>
         </div>
 
         <div v-if="translatedBoard" ref="boardRef" class="board">
@@ -359,10 +356,14 @@ async function pickupPiece(evt, piece, idx) {
 
 function dropPiece(discard) {
   if (selectedPiece.value !== null) {
+    const block = selectedPiece.value.elem;
     if (discard) {
-      selectedPiece.value.elem.classList.remove("hidden")
+      block.classList.remove("hidden")
+    } else {
+      block.classList.add("removed")
     }
     selectedPiece.value = null;
+    
   }
 };
 
@@ -378,6 +379,7 @@ function placePiece() {
 };
 
 function handlePieceClick(evt, piece, idx) {
+  console.log("click");
   if (selectedPiece.value === null) {
     pickupPiece(evt, piece, idx);
   } else {
@@ -510,11 +512,7 @@ watch(colorPickerActive, (isActive) => {
 }
 
 .unplaced-piece {
-  padding: 1em 0;
-}
-
-.unplaced-piece .piece {
-  margin: auto;
+  margin: 1em auto;
 }
 
 .selected-piece {
@@ -525,6 +523,12 @@ watch(colorPickerActive, (isActive) => {
 .hidden {
   visibility: hidden;
   opacity: 0;
+}
+
+.removed {
+  height: 0 !important;
+  padding: 0;
+  margin: 0;
 }
 
 .chat-box {
